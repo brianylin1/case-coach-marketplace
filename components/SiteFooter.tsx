@@ -11,8 +11,8 @@ export function SiteFooter() {
             <span className="font-semibold text-slate-900">CaseCoach</span>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
-            <Link href="/coaches" className="hover:text-slate-900">
-              Find a coach
+            <Link href="/sessions" className="hover:text-slate-900">
+              Find a session
             </Link>
             <Link href="/signup/student" className="hover:text-slate-900">
               For students

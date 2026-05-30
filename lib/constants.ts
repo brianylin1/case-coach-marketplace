@@ -45,5 +45,20 @@ export function isFocusKey(value: string): boolean {
   return value in FOCUS_LABELS;
 }
 
-export const REQUEST_STATUSES = ["PENDING", "ACCEPTED", "DECLINED"] as const;
-export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+// Price filter buckets for the session browser. min/max are inclusive USD
+// bounds on a coach's hourly rate; null means unbounded.
+export const PRICE_BUCKETS = [
+  { key: "any", label: "Any price", min: null, max: null },
+  { key: "probono", label: "Pro bono", min: 0, max: 0 },
+  { key: "lt100", label: "Under $100", min: 1, max: 99 },
+  { key: "100to150", label: "$100–150", min: 100, max: 150 },
+  { key: "gt150", label: "$150+", min: 151, max: null },
+] as const;
+
+export type PriceBucketKey = (typeof PRICE_BUCKETS)[number]["key"];
+
+export function priceBucket(key: string | undefined) {
+  return PRICE_BUCKETS.find((b) => b.key === key) ?? PRICE_BUCKETS[0];
+}
+
+export const MAX_OPEN_SLOTS = 5;

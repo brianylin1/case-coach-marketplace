@@ -56,7 +56,7 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
           {formatRate(coach.hourlyRate)}
         </span>
         <span className="text-sm font-medium text-indigo-600 group-hover:underline">
-          View profile →
+          View times →
         </span>
       </div>
     </Link>

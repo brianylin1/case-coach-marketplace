@@ -128,9 +128,21 @@ const students = [
   },
 ];
 
+// 5 slots per coach across the next week, at varied hours (UTC).
+const SLOT_HOURS = [9, 11, 14, 16, 18];
+
+function slotTime(dayOffset: number, hour: number): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() + dayOffset);
+  d.setUTCHours(hour, 0, 0, 0);
+  return d;
+}
+
 async function main() {
-  // Idempotent: clear and reseed so `npm run db:reset` always gives a clean demo.
-  await prisma.sessionRequest.deleteMany();
+  // Idempotent reset (FK-safe order).
+  await prisma.booking.deleteMany();
+  await prisma.slot.deleteMany();
   await prisma.coach.deleteMany();
   await prisma.student.deleteMany();
 
@@ -154,25 +166,47 @@ async function main() {
     ),
   );
 
-  // A sample pending request so a coach's dashboard isn't empty in the demo.
+  let slotCount = 0;
+  for (let ci = 0; ci < createdCoaches.length; ci++) {
+    const coach = createdCoaches[ci];
+    for (let k = 0; k < SLOT_HOURS.length; k++) {
+      const dayOffset = ((ci + k) % 6) + 1; // 1..6 days out
+      await prisma.slot.create({
+        data: { coachId: coach.id, startTime: slotTime(dayOffset, SLOT_HOURS[k]) },
+      });
+      slotCount++;
+    }
+  }
+
+  // A sample booking so dashboards aren't empty: Jordan books Maya's first slot.
   const maya = createdCoaches.find((c) => c.name === "Maya Chen");
   const jordan = createdStudents.find((s) => s.name === "Jordan Lee");
   if (maya && jordan) {
-    await prisma.sessionRequest.create({
-      data: {
-        studentId: jordan.id,
-        coachId: maya.id,
-        focusArea: "structuring",
-        message:
-          "Hi Maya — I have McKinsey first rounds in ~5 weeks. My structures feel like generic buckets and I'd love help making them MECE and tailored. Could we start with one diagnostic case?",
-        proposedTimes: "Tue or Thu evening ET, or Sunday afternoon",
-        status: "PENDING",
-      },
+    const slot = await prisma.slot.findFirst({
+      where: { coachId: maya.id, isBooked: false },
+      orderBy: { startTime: "asc" },
     });
+    if (slot) {
+      await prisma.$transaction([
+        prisma.slot.update({ where: { id: slot.id }, data: { isBooked: true } }),
+        prisma.booking.create({
+          data: {
+            slotId: slot.id,
+            studentId: jordan.id,
+            coachId: maya.id,
+            focusArea: "structuring",
+            pricePaid: maya.hourlyRate,
+            paymentStatus: "SIMULATED",
+            paymentRef: "sim_seed_demo",
+            status: "CONFIRMED",
+          },
+        }),
+      ]);
+    }
   }
 
   console.log(
-    `Seeded ${createdCoaches.length} coaches, ${createdStudents.length} students, 1 sample request.`,
+    `Seeded ${createdCoaches.length} coaches, ${createdStudents.length} students, ${slotCount} slots, 1 sample booking.`,
   );
 }
 

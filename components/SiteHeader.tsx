@@ -23,8 +23,8 @@ export async function SiteHeader() {
           </span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">
-          <Link href="/coaches" className={btnGhost}>
-            Find a coach
+          <Link href="/sessions" className={btnGhost}>
+            Find a session
           </Link>
           {user ? (
             <>

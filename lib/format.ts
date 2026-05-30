@@ -28,6 +28,87 @@ export function initials(name: string): string {
     .join("");
 }
 
+// ----- Slot / calendar formatting (all in UTC for determinism) -----
+
+const FMT_SHORT_DATE = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const FMT_TIME = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
+const FMT_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const FMT_WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  timeZone: "UTC",
+});
+const FMT_WEEKDAY_SHORT = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: "UTC",
+});
+
+export function startOfUtcDay(date: Date): Date {
+  const d = new Date(date);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+export function addDays(date: Date, n: number): Date {
+  const d = new Date(date);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d;
+}
+
+export function dayKeyOf(date: Date): string {
+  return new Date(date).toISOString().slice(0, 10);
+}
+
+export function formatSlotParts(date: Date): {
+  dateLabel: string;
+  timeLabel: string;
+  dayKey: string;
+} {
+  return {
+    dateLabel: FMT_SHORT_DATE.format(date),
+    timeLabel: FMT_TIME.format(date),
+    dayKey: dayKeyOf(date),
+  };
+}
+
+export function relativeDayLabel(dayKey: string, todayKey: string): string {
+  if (dayKey === todayKey) return "Today";
+  const tomorrowKey = dayKeyOf(addDays(new Date(`${todayKey}T00:00:00Z`), 1));
+  if (dayKey === tomorrowKey) return "Tomorrow";
+  return FMT_WEEKDAY_LONG.format(new Date(`${dayKey}T00:00:00Z`));
+}
+
+export function monthDayLabel(dayKey: string): string {
+  return FMT_MONTH_DAY.format(new Date(`${dayKey}T00:00:00Z`));
+}
+
+// Day chips for the next `n` days, starting today (UTC).
+export function upcomingDays(
+  n: number,
+): { dayKey: string; short: string; sub: string }[] {
+  const today = startOfUtcDay(new Date());
+  return Array.from({ length: n }, (_, i) => {
+    const d = addDays(today, i);
+    return {
+      dayKey: dayKeyOf(d),
+      short: i === 0 ? "Today" : FMT_WEEKDAY_SHORT.format(d),
+      sub: FMT_MONTH_DAY.format(d),
+    };
+  });
+}
+
 export function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 60) return "just now";

@@ -1,7 +1,7 @@
-// Case Coach marketplace schema.
-// Lists are stored as JSON-string columns (SQLite has no scalar lists / enums);
-// helpers in lib/format.ts parse them. Enums are plain strings validated in app code.
-// Docs: https://pris.ly/d/prisma-schema
+// CaseCoach — calendar-first booking marketplace.
+// Lists are JSON-string columns (SQLite has no scalar lists / enums);
+// helpers in lib/format.ts parse them. Enums are plain strings validated in
+// app code. See AGENTS.md.
 
 generator client {
   provider = "prisma-client"
@@ -13,45 +13,68 @@ datasource db {
 }
 
 model Student {
-  id          Int              @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
-  email       String           @unique
-  targetFirms String           @default("[]") // JSON array of firm names
-  focusAreas  String           @default("[]") // JSON array of focus-area keys
-  timeline    String? // e.g. "Interviewing in 4 weeks"
-  goal        String? // free-text: what they want help with
-  createdAt   DateTime         @default(now())
-  requests    SessionRequest[]
+  email       String    @unique
+  targetFirms String    @default("[]") // JSON array of firm names
+  focusAreas  String    @default("[]") // JSON array of focus-area keys
+  timeline    String?
+  goal        String?
+  createdAt   DateTime  @default(now())
+  bookings    Booking[]
 }
 
 model Coach {
-  id           Int              @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   name         String
-  email        String           @unique
+  email        String    @unique
   firm         String // McKinsey | Bain | BCG | Other
-  title        String // e.g. "Engagement Manager"
-  yearsAtFirm  Int              @default(0)
-  headline     String? // short tagline shown on cards
+  title        String
+  yearsAtFirm  Int       @default(0)
+  headline     String?
   bio          String
-  focusAreas   String           @default("[]") // JSON array of focus-area keys
-  hourlyRate   Int              @default(0) // USD per hour; 0 = pro bono
-  availability String? // free-text, e.g. "Weeknights & weekends ET"
+  focusAreas   String    @default("[]") // JSON array of focus-area keys
+  hourlyRate   Int       @default(0) // USD per session; 0 = pro bono
+  availability String? // free-text summary
   linkedinUrl  String?
-  isActive     Boolean          @default(true)
-  createdAt    DateTime         @default(now())
-  requests     SessionRequest[]
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  slots        Slot[]
+  bookings     Booking[]
 }
 
-model SessionRequest {
+// A bookable time offered by a coach. Availability is derived from
+// `isBooked` + `startTime` being in the future.
+model Slot {
+  id           Int      @id @default(autoincrement())
+  coach        Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  coachId      Int
+  startTime    DateTime
+  durationMins Int      @default(60)
+  isBooked     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  booking      Booking?
+
+  @@index([coachId])
+  @@index([startTime])
+  @@index([isBooked])
+}
+
+// A confirmed booking of a slot. Payment fields live here so a real payment
+// provider (Stripe) can be slotted in behind lib/payments.ts later.
+model Booking {
   id            Int      @id @default(autoincrement())
+  slot          Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  slotId        Int      @unique
   student       Student  @relation(fields: [studentId], references: [id])
   studentId     Int
   coach         Coach    @relation(fields: [coachId], references: [id])
   coachId       Int
-  focusArea     String
-  message       String
-  proposedTimes String?
-  status        String   @default("PENDING") // PENDING | ACCEPTED | DECLINED
+  focusArea     String?
+  pricePaid     Int      @default(0)
+  paymentStatus String   @default("SIMULATED") // SIMULATED | PAID | REFUNDED
+  paymentRef    String?
+  status        String   @default("CONFIRMED") // CONFIRMED | CANCELLED
   createdAt     DateTime @default(now())
 
   @@index([studentId])
