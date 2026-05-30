@@ -1,0 +1,59 @@
+// Case Coach marketplace schema.
+// Lists are stored as JSON-string columns (SQLite has no scalar lists / enums);
+// helpers in lib/format.ts parse them. Enums are plain strings validated in app code.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Student {
+  id          Int              @id @default(autoincrement())
+  name        String
+  email       String           @unique
+  targetFirms String           @default("[]") // JSON array of firm names
+  focusAreas  String           @default("[]") // JSON array of focus-area keys
+  timeline    String? // e.g. "Interviewing in 4 weeks"
+  goal        String? // free-text: what they want help with
+  createdAt   DateTime         @default(now())
+  requests    SessionRequest[]
+}
+
+model Coach {
+  id           Int              @id @default(autoincrement())
+  name         String
+  email        String           @unique
+  firm         String // McKinsey | Bain | BCG | Other
+  title        String // e.g. "Engagement Manager"
+  yearsAtFirm  Int              @default(0)
+  headline     String? // short tagline shown on cards
+  bio          String
+  focusAreas   String           @default("[]") // JSON array of focus-area keys
+  hourlyRate   Int              @default(0) // USD per hour; 0 = pro bono
+  availability String? // free-text, e.g. "Weeknights & weekends ET"
+  linkedinUrl  String?
+  isActive     Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  requests     SessionRequest[]
+}
+
+model SessionRequest {
+  id            Int      @id @default(autoincrement())
+  student       Student  @relation(fields: [studentId], references: [id])
+  studentId     Int
+  coach         Coach    @relation(fields: [coachId], references: [id])
+  coachId       Int
+  focusArea     String
+  message       String
+  proposedTimes String?
+  status        String   @default("PENDING") // PENDING | ACCEPTED | DECLINED
+  createdAt     DateTime @default(now())
+
+  @@index([studentId])
+  @@index([coachId])
+}

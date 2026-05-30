@@ -1,0 +1,49 @@
+// Shared domain constants. Safe to import from both client and server components.
+
+export const FIRMS = ["McKinsey", "Bain", "BCG", "Other"] as const;
+export type Firm = (typeof FIRMS)[number];
+
+export function isFirm(value: string): value is Firm {
+  return (FIRMS as readonly string[]).includes(value);
+}
+
+// Tailwind classes per firm, loosely echoing each firm's brand color.
+export const FIRM_STYLES: Record<Firm, { badge: string; dot: string }> = {
+  McKinsey: { badge: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-600" },
+  Bain: { badge: "bg-red-50 text-red-700 ring-red-600/20", dot: "bg-red-600" },
+  BCG: { badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/20", dot: "bg-emerald-600" },
+  Other: { badge: "bg-slate-100 text-slate-700 ring-slate-600/20", dot: "bg-slate-500" },
+};
+
+export function firmStyle(firm: string) {
+  return isFirm(firm) ? FIRM_STYLES[firm] : FIRM_STYLES.Other;
+}
+
+export const FOCUS_AREAS = [
+  { key: "structuring", label: "Case Structuring & Frameworks" },
+  { key: "market-sizing", label: "Market Sizing & Estimation" },
+  { key: "profitability", label: "Profitability Cases" },
+  { key: "market-entry", label: "Market Entry" },
+  { key: "ma", label: "M&A / Due Diligence" },
+  { key: "math", label: "Mental Math & Exhibits" },
+  { key: "behavioral", label: "Behavioral / PEI" },
+  { key: "mock", label: "Full Mock Interviews" },
+  { key: "networking", label: "Resume & Networking" },
+] as const;
+
+export type FocusKey = (typeof FOCUS_AREAS)[number]["key"];
+
+const FOCUS_LABELS: Record<string, string> = Object.fromEntries(
+  FOCUS_AREAS.map((f) => [f.key, f.label]),
+);
+
+export function focusLabel(key: string): string {
+  return FOCUS_LABELS[key] ?? key;
+}
+
+export function isFocusKey(value: string): boolean {
+  return value in FOCUS_LABELS;
+}
+
+export const REQUEST_STATUSES = ["PENDING", "ACCEPTED", "DECLINED"] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
