@@ -13,12 +13,13 @@ coaches. See `README.md` for the full overview.
 
 - **Prisma 7** uses a WASM query compiler + **driver adapters** (no Rust engine).
   The client is generated to `app/generated/prisma/` (gitignored) and the
-  runtime needs a SQLite adapter — wired up in `lib/prisma.ts` via
-  `@prisma/adapter-better-sqlite3`. The datasource URL lives in
-  `prisma.config.ts`, not in `schema.prisma`.
-- **Lists** (target firms, focus areas) are JSON-string columns — SQLite has no
-  scalar lists or enums. Use `parseList` / `serializeList` from `lib/format.ts`,
-  and the string unions/validators in `lib/constants.ts`.
+  runtime needs a driver adapter — wired up in `lib/prisma.ts` via
+  `@prisma/adapter-pg` (Postgres). `DATABASE_URL` lives in `.env` /
+  `prisma.config.ts`, not in `schema.prisma`. `prisma db push` does NOT
+  regenerate the client in v7 — use `npm run db:push` (push + generate).
+- **Lists** (target firms, focus areas) are JSON-string columns and enums are
+  plain strings validated in app code. Use `parseList` / `serializeList` from
+  `lib/format.ts`, and the string unions/validators in `lib/constants.ts`.
 - **Sessions** are signed cookies (`lib/session.ts`). `getCurrentUser()` is the
   one helper to read the logged-in student/coach. Server-only — never import it
   from a `"use client"` component.

@@ -33,19 +33,21 @@ booking takes two clicks.
 | Language | TypeScript |
 | Styling | Tailwind CSS v4 |
 | Icons | lucide-react |
-| Database | SQLite via Prisma 7 (better-sqlite3 driver adapter) |
+| Database | Postgres via Prisma 7 (`pg` driver adapter) |
 | Auth | Lightweight signed-cookie sessions (passwordless) |
 
 ## Quick start
 
 ```bash
+cp .env.example .env # then set DATABASE_URL to a Postgres (local or a free Neon DB)
 npm install          # installs deps; postinstall runs `prisma generate`
-npm run db:setup     # creates the SQLite DB, generates the client, and seeds demo data
+npm run db:setup     # pushes the schema to Postgres, generates the client, seeds demo data
 npm run dev          # http://localhost:3000
 ```
 
-No `.env` is required for local dev (SQLite defaults are baked in). Copy
-`.env.example` to `.env` to override `DATABASE_URL` or set a `SESSION_SECRET`.
+You need a `DATABASE_URL` (Postgres). The quickest path is a free
+[Neon](https://neon.tech) database — paste its connection string into `.env`.
+`SESSION_SECRET` is optional locally.
 
 ### Try the demo accounts
 
@@ -90,7 +92,7 @@ app/
   generated/prisma/     # Prisma client (generated; gitignored)
 components/             # SessionBrowser, SlotCard, BookingModal, AvailabilityEditor, Modal, …
 lib/
-  prisma.ts             # Prisma client singleton (+ SQLite adapter)
+  prisma.ts             # Prisma client singleton (+ Postgres adapter)
   payments.ts           # Payment seam — simulated today, Stripe-ready
   session.ts            # Signed-cookie sessions + getCurrentUser()
   serialize.ts          # Prisma rows -> client-safe view types
@@ -107,9 +109,9 @@ prisma/
 - **Slot** — a bookable time offered by a coach. Availability is derived from `isBooked` + a future `startTime`.
 - **Booking** — a confirmed booking of a slot (unique per slot, which prevents double-booking). Holds the payment fields (`pricePaid`, `paymentStatus`, `paymentRef`) so a real provider slots in cleanly.
 
-List-like fields (target firms, focus areas) are JSON-string columns since SQLite
-has no native arrays; `lib/format.ts` handles (de)serialization. Times are stored
-and formatted in **UTC** for determinism.
+List-like fields (target firms, focus areas) are stored as JSON-string columns;
+`lib/format.ts` handles (de)serialization. Times are stored and formatted in
+**UTC** for determinism.
 
 ## How auth works (and its limits)
 
@@ -130,15 +132,15 @@ simulated result. To go live:
 
 The booking API and UI don't need to change.
 
-## Deploying
+## Deploying (Vercel + Neon)
 
-SQLite is great locally but won't persist on most serverless hosts. To ship:
+The app runs on Postgres, so it deploys to serverless hosts as-is.
 
-1. Provision Postgres (Neon, Supabase, Vercel Postgres, …).
-2. In `prisma/schema.prisma`, set `datasource.provider = "postgresql"`.
-3. Swap the adapter in `lib/prisma.ts` for `@prisma/adapter-pg` and set `DATABASE_URL`.
-4. Set a strong `SESSION_SECRET` and wire up real payments (above).
-5. `prisma migrate deploy` (or `db push`) against the new database.
+1. Create a free Postgres database on [Neon](https://neon.tech) and copy the **pooled** connection string (the host contains `-pooler`).
+2. Import the repo into [Vercel](https://vercel.com) — it auto-detects Next.js.
+3. Add environment variables in Vercel: `DATABASE_URL` (the Neon string) and `SESSION_SECRET` (a long random value, e.g. `openssl rand -hex 32`).
+4. Create the tables once — locally run `npx prisma db push` with `DATABASE_URL` pointed at Neon, then optionally `npm run db:seed` for demo data.
+5. Deploy. Pushes to `main` go to production; open PRs get preview URLs.
 
 ## Ideas for next
 

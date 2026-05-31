@@ -1,7 +1,6 @@
 // CaseCoach — calendar-first booking marketplace.
-// Lists are JSON-string columns (SQLite has no scalar lists / enums);
-// helpers in lib/format.ts parse them. Enums are plain strings validated in
-// app code. See AGENTS.md.
+// Lists are stored as JSON-string columns and enums as plain strings validated
+// in app code; helpers in lib/format.ts parse the lists. See AGENTS.md.
 
 generator client {
   provider = "prisma-client"
@@ -9,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Student {
