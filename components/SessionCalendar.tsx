@@ -178,7 +178,7 @@ export function SessionCalendar({
           {days.map((d) => (
             <div
               key={d.dayKey}
-              className="border-b border-l border-slate-100 px-1 py-2 text-center"
+              className="border-b border-l border-slate-100 px-1 py-1.5 text-center"
             >
               <div className="text-xs font-semibold text-slate-900">{d.short}</div>
               <div className="text-[11px] text-slate-400">{d.sub}</div>
@@ -198,16 +198,14 @@ export function SessionCalendar({
                     <div
                       key={d.dayKey}
                       aria-hidden
-                      className={`h-12 border-b border-l border-slate-100 ${isPast ? "bg-slate-100/70" : ""}`}
-                      style={
-                        isPast
-                          ? {
-                              backgroundImage:
-                                "repeating-linear-gradient(45deg, rgb(241 245 249), rgb(241 245 249) 5px, transparent 5px, transparent 10px)",
-                            }
-                          : undefined
-                      }
-                    />
+                      className={`flex h-11 items-center justify-center border-b border-l border-slate-100 ${isPast ? "bg-slate-100" : ""}`}
+                    >
+                      {isPast && (
+                        <span className="text-[9px] font-medium uppercase tracking-wide text-slate-300">
+                          Past
+                        </span>
+                      )}
+                    </div>
                   );
                 }
                 return (
@@ -216,14 +214,14 @@ export function SessionCalendar({
                     type="button"
                     onClick={() => openCell(d, hour)}
                     aria-label={`${d.short} ${d.sub}, ${hourLabel(hour)} — ${cell.count} coaches available`}
-                    className="flex h-12 flex-col items-center justify-center gap-0.5 border-b border-l border-slate-100 bg-indigo-50 transition hover:bg-indigo-100"
+                    className="flex h-11 flex-col items-center justify-center gap-0.5 border-b border-l border-slate-100 bg-indigo-100/60 transition hover:bg-indigo-100"
                   >
-                    <span className="text-sm font-semibold leading-none text-indigo-700">
-                      {cell.count}
+                    <span className="whitespace-nowrap text-[11px] font-semibold leading-none text-indigo-700">
+                      {cell.count} coach{cell.count === 1 ? "" : "es"}
                     </span>
-                    <span className="flex flex-wrap justify-center gap-0.5 px-0.5">
+                    <span className="flex flex-wrap items-center justify-center gap-x-1 leading-none">
                       {cell.firms.slice(0, 3).map((f) => (
-                        <FirmMonogram key={f} firm={f} />
+                        <CellFirmTag key={f} firm={f} />
                       ))}
                     </span>
                   </button>
@@ -360,12 +358,24 @@ export function SessionCalendar({
   );
 }
 
+// Filled badge — used in the legend (the color/abbreviation key).
 function FirmMonogram({ firm }: { firm: string }) {
   const style = firmStyle(firm);
   return (
     <span
       className={`inline-flex items-center rounded px-1 text-[9px] font-semibold leading-4 ring-1 ring-inset ${style.badge}`}
     >
+      {style.short}
+    </span>
+  );
+}
+
+// Low-emphasis variant — used inside calendar cells so firm hints don't
+// overpower the count.
+function CellFirmTag({ firm }: { firm: string }) {
+  const style = firmStyle(firm);
+  return (
+    <span className={`text-[10px] font-semibold leading-none ${style.text}`}>
       {style.short}
     </span>
   );

@@ -8,13 +8,16 @@ export function isFirm(value: string): value is Firm {
 }
 
 // Tailwind classes per firm, loosely echoing each firm's brand color.
-// `short` is a compact monogram used in dense UI (calendar cells). These are
-// plain text abbreviations, not trademarked logos.
-export const FIRM_STYLES: Record<Firm, { short: string; badge: string; dot: string }> = {
-  McKinsey: { short: "McK", badge: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-600" },
-  Bain: { short: "Bain", badge: "bg-red-50 text-red-700 ring-red-600/20", dot: "bg-red-600" },
-  BCG: { short: "BCG", badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/20", dot: "bg-emerald-600" },
-  Other: { short: "Other", badge: "bg-slate-100 text-slate-700 ring-slate-600/20", dot: "bg-slate-500" },
+// `short` is a compact monogram; `text` is a low-emphasis text color for dense
+// UI (calendar cells). These are plain text abbreviations, not logos.
+export const FIRM_STYLES: Record<
+  Firm,
+  { short: string; text: string; badge: string; dot: string }
+> = {
+  McKinsey: { short: "McK", text: "text-blue-600", badge: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-600" },
+  Bain: { short: "Bain", text: "text-red-600", badge: "bg-red-50 text-red-700 ring-red-600/20", dot: "bg-red-600" },
+  BCG: { short: "BCG", text: "text-emerald-600", badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/20", dot: "bg-emerald-600" },
+  Other: { short: "Other", text: "text-slate-500", badge: "bg-slate-100 text-slate-700 ring-slate-600/20", dot: "bg-slate-500" },
 };
 
 export function firmStyle(firm: string) {
