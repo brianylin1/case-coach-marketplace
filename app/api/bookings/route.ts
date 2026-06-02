@@ -1,0 +1,118 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
+import { str } from "@/lib/validation";
+import { processPayment } from "@/lib/payments";
+import {
+  BOOKING_HORIZON_DAYS,
+  isStartWithinBlocks,
+  SESSION_MINUTES,
+} from "@/lib/availability";
+import { addDays, startOfUtcDay } from "@/lib/format";
+
+// A logged-in student books a generated 60-min session by (coachId, startTime).
+// Payment is simulated via lib/payments.ts (swap for Stripe later).
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session || session.role !== "student") {
+    return NextResponse.json(
+      { error: "Sign in as a student to book a session." },
+      { status: 401 },
+    );
+  }
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+  }
+
+  const coachId = Number(body.coachId);
+  const startTime = new Date(str(body.startTime, 40));
+  const focusArea = str(body.focusArea, 60) || null;
+
+  if (!Number.isInteger(coachId)) {
+    return NextResponse.json({ error: "Unknown coach." }, { status: 400 });
+  }
+  if (Number.isNaN(startTime.getTime())) {
+    return NextResponse.json({ error: "Invalid session time." }, { status: 400 });
+  }
+  // Sessions are on the hour.
+  if (
+    startTime.getUTCMinutes() !== 0 ||
+    startTime.getUTCSeconds() !== 0 ||
+    startTime.getUTCMilliseconds() !== 0
+  ) {
+    return NextResponse.json({ error: "Invalid session time." }, { status: 400 });
+  }
+  const now = new Date();
+  if (startTime <= now) {
+    return NextResponse.json({ error: "That time has already passed." }, { status: 409 });
+  }
+  if (startTime >= addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS)) {
+    return NextResponse.json(
+      { error: "That time is outside the booking window." },
+      { status: 400 },
+    );
+  }
+
+  const coach = await prisma.coach.findUnique({
+    where: { id: coachId },
+    include: { blocks: true },
+  });
+  if (!coach || !coach.isActive) {
+    return NextResponse.json({ error: "That session isn't available." }, { status: 404 });
+  }
+  if (!isStartWithinBlocks(coach.blocks, startTime)) {
+    return NextResponse.json(
+      { error: "That time is no longer available." },
+      { status: 409 },
+    );
+  }
+
+  const amount = coach.hourlyRate;
+  const payment = await processPayment({
+    amount,
+    description: `CaseCoach session with ${coach.name}`,
+  });
+
+  try {
+    const booking = await prisma.$transaction(async (tx) => {
+      const existing = await tx.booking.findUnique({
+        where: { coachId_startTime: { coachId, startTime } },
+      });
+      if (existing) throw new Error("TAKEN");
+      return tx.booking.create({
+        data: {
+          coachId,
+          studentId: session.id,
+          startTime,
+          durationMins: SESSION_MINUTES,
+          focusArea,
+          pricePaid: amount,
+          paymentStatus: payment.status,
+          paymentRef: payment.reference,
+          status: "CONFIRMED",
+        },
+      });
+    });
+
+    return NextResponse.json({
+      id: booking.id,
+      pricePaid: amount,
+      paymentStatus: payment.status,
+      coach: {
+        name: coach.name,
+        email: coach.email,
+        firm: coach.firm,
+        title: coach.title,
+      },
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "Sorry — that time was just booked. Pick another." },
+      { status: 409 },
+    );
+  }
+}

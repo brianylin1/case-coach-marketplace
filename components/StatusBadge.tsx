@@ -16,10 +16,20 @@ const MAP = {
     cls: "bg-slate-100 text-slate-600 ring-slate-500/20",
     Icon: XCircle,
   },
+  CONFIRMED: {
+    label: "Confirmed",
+    cls: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+    Icon: CheckCircle2,
+  },
+  CANCELLED: {
+    label: "Cancelled",
+    cls: "bg-slate-100 text-slate-600 ring-slate-500/20",
+    Icon: XCircle,
+  },
 } as const;
 
 export function StatusBadge({ status }: { status: string }) {
-  const entry = MAP[status as keyof typeof MAP] ?? MAP.PENDING;
+  const entry = MAP[status as keyof typeof MAP] ?? MAP.CONFIRMED;
   const { Icon } = entry;
   return (
     <span

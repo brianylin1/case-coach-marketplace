@@ -8,9 +8,10 @@ import { Avatar } from "@/components/Avatar";
 import { FirmBadge } from "@/components/FirmBadge";
 import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
-import { RequestActions } from "@/components/RequestActions";
+import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { focusLabel } from "@/lib/constants";
-import { formatRate, parseList, timeAgo } from "@/lib/format";
+import { blocksToCellKeys } from "@/lib/availability";
+import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
@@ -30,12 +31,13 @@ export default async function DashboardPage() {
 /* ----------------------------- Student view ----------------------------- */
 
 async function StudentDashboard({ studentId }: { studentId: number }) {
-  const [student, requests] = await Promise.all([
+  const now = new Date();
+  const [student, bookings] = await Promise.all([
     prisma.student.findUniqueOrThrow({ where: { id: studentId } }),
-    prisma.sessionRequest.findMany({
-      where: { studentId },
+    prisma.booking.findMany({
+      where: { studentId, status: "CONFIRMED", startTime: { gte: now } },
       include: { coach: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { startTime: "asc" },
     }),
   ]);
 
@@ -45,65 +47,80 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
   return (
     <Shell
       title={`Welcome, ${student.name.split(" ")[0]}`}
-      subtitle="Track your session requests and find more coaches."
+      subtitle="Your upcoming sessions, all in one place."
       action={
-        <Link href="/coaches" className={btnPrimary}>
+        <Link href="/sessions" className={btnPrimary}>
           <Search className="size-4" />
-          Browse coaches
+          Book a session
         </Link>
       }
     >
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2">
           <h2 className="mb-3 text-lg font-semibold text-slate-900">
-            Your requests
+            Upcoming sessions
           </h2>
-          {requests.length === 0 ? (
+          {bookings.length === 0 ? (
             <EmptyState
-              title="No requests yet"
-              body="Browse coaches and send your first session request — it only takes a moment."
+              title="No sessions booked yet"
+              body="Browse open slots and book a coach instantly — you'll see their contact details the moment you book."
               cta={
-                <Link href="/coaches" className={btnPrimary}>
+                <Link href="/sessions" className={btnPrimary}>
                   <Search className="size-4" />
-                  Find a coach
+                  Find a session
                 </Link>
               }
             />
           ) : (
             <ul className="space-y-4">
-              {requests.map((req) => (
-                <li key={req.id} className={`${cardClass} p-5`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <Link
-                      href={`/coaches/${req.coach.id}`}
-                      className="flex items-center gap-3 hover:opacity-80"
-                    >
-                      <Avatar name={req.coach.name} />
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          {req.coach.name}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {req.coach.title} · {req.coach.firm}
-                        </p>
-                      </div>
-                    </Link>
-                    <StatusBadge status={req.status} />
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                    <FocusTag focusKey={req.focusArea} />
-                    <span>·</span>
-                    <span>{timeAgo(req.createdAt)}</span>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-700">{req.message}</p>
-                  {req.status === "ACCEPTED" && (
-                    <ContactBanner
-                      label={`${req.coach.name.split(" ")[0]} accepted! Reach out to schedule:`}
-                      email={req.coach.email}
-                    />
-                  )}
-                </li>
-              ))}
+              {bookings.map((b) => {
+                const when = formatSlotParts(b.startTime);
+                return (
+                  <li key={b.id} className={`${cardClass} p-5`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <Link
+                        href={`/coaches/${b.coachId}`}
+                        className="flex items-center gap-3 hover:opacity-80"
+                      >
+                        <Avatar name={b.coach.name} />
+                        <div>
+                          <p className="font-semibold text-slate-900">
+                            {b.coach.name}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {b.coach.title} · {b.coach.firm}
+                          </p>
+                        </div>
+                      </Link>
+                      <StatusBadge status={b.status} />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
+                        <CalendarClock className="size-4 text-slate-400" />
+                        {when.dateLabel} · {when.timeLabel}
+                      </span>
+                      {b.focusArea && (
+                        <>
+                          <span className="text-slate-300">·</span>
+                          <FocusTag focusKey={b.focusArea} />
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                      <a
+                        href={`mailto:${b.coach.email}`}
+                        className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
+                      >
+                        <Mail className="size-4" />
+                        {b.coach.email}
+                      </a>
+                      <span className="text-xs text-slate-400">
+                        Paid {formatRate(b.pricePaid)} · simulated
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -135,15 +152,9 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                   <span className="text-slate-400">Not set</span>
                 )}
               </Field>
-              {student.timeline && (
-                <Field label="Timeline">{student.timeline}</Field>
-              )}
-              {student.goal && <Field label="Goal">{student.goal}</Field>}
+              {student.timeline && <Field label="Timeline">{student.timeline}</Field>}
             </dl>
-            <Link
-              href="/signup/student"
-              className={`${btnSecondary} mt-4 w-full`}
-            >
+            <Link href="/signup/student" className={`${btnSecondary} mt-4 w-full`}>
               Update preferences
             </Link>
           </div>
@@ -156,28 +167,27 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
 /* ------------------------------ Coach view ------------------------------ */
 
 async function CoachDashboard({ coachId }: { coachId: number }) {
-  const [coach, requests] = await Promise.all([
-    prisma.coach.findUniqueOrThrow({ where: { id: coachId } }),
-    prisma.sessionRequest.findMany({
-      where: { coachId },
+  const now = new Date();
+  const [coach, bookings] = await Promise.all([
+    prisma.coach.findUniqueOrThrow({
+      where: { id: coachId },
+      include: { blocks: true },
+    }),
+    prisma.booking.findMany({
+      where: { coachId, status: "CONFIRMED", startTime: { gte: now } },
       include: { student: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { startTime: "asc" },
     }),
   ]);
 
-  // Pending first so the coach sees what needs action.
-  const order = { PENDING: 0, ACCEPTED: 1, DECLINED: 2 } as Record<string, number>;
-  const sorted = [...requests].sort(
-    (a, b) => (order[a.status] ?? 3) - (order[b.status] ?? 3),
-  );
-  const pendingCount = requests.filter((r) => r.status === "PENDING").length;
-  const acceptedCount = requests.filter((r) => r.status === "ACCEPTED").length;
+  const initialCellKeys = blocksToCellKeys(coach.blocks);
+  const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
 
   return (
     <Shell
       title={`Welcome, ${coach.name.split(" ")[0]}`}
-      subtitle="Review incoming requests and manage your profile."
+      subtitle="Paint your weekly availability and see who's booked you."
       action={
         <Link href={`/coaches/${coach.id}`} className={btnSecondary}>
           View public profile
@@ -185,107 +195,88 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
       }
     >
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <Stat label="Pending" value={pendingCount} accent="amber" />
-        <Stat label="Accepted" value={acceptedCount} accent="emerald" />
-        <Stat label="Total" value={requests.length} accent="indigo" />
+        <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
+        <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
+        <Stat label="Booked value" value={`$${earnings}`} accent="amber" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section className="lg:col-span-2">
-          <h2 className="mb-3 text-lg font-semibold text-slate-900">
-            Incoming requests
-          </h2>
-          {sorted.length === 0 ? (
-            <EmptyState
-              title="No requests yet"
-              body="When students request a session with you, they'll show up here. Make sure your profile highlights what you coach."
-              cta={
-                <Link href={`/coaches/${coach.id}`} className={btnSecondary}>
-                  View your profile
-                </Link>
-              }
-            />
-          ) : (
-            <ul className="space-y-4">
-              {sorted.map((req) => (
-                <li key={req.id} className={`${cardClass} p-5`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={req.student.name} />
-                      <div>
-                        <p className="font-semibold text-slate-900">
-                          {req.student.name}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          wants help with {focusLabel(req.focusArea)}
-                        </p>
-                      </div>
-                    </div>
-                    <StatusBadge status={req.status} />
-                  </div>
-                  <p className="mt-3 text-sm text-slate-700">{req.message}</p>
-                  {req.proposedTimes && (
-                    <p className="mt-2 flex items-center gap-2 text-sm text-slate-500">
-                      <CalendarClock className="size-4 text-slate-400" />
-                      {req.proposedTimes}
-                    </p>
-                  )}
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <span className="text-xs text-slate-400">
-                      {timeAgo(req.createdAt)}
-                    </span>
-                    {req.status === "PENDING" ? (
-                      <RequestActions requestId={req.id} />
-                    ) : req.status === "ACCEPTED" ? (
-                      <a
-                        href={`mailto:${req.student.email}`}
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:underline"
-                      >
-                        <Mail className="size-4" />
-                        {req.student.email}
-                      </a>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="lg:col-span-2">
+          <AvailabilityGrid initialCellKeys={initialCellKeys} />
+        </div>
 
-        <aside className="space-y-4">
-          <div className={`${cardClass} p-5`}>
-            <div className="flex items-center gap-3">
-              <Avatar name={coach.name} />
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-slate-900">
-                  {coach.name}
-                </p>
-                <FirmBadge firm={coach.firm} />
-              </div>
+        <aside className={`${cardClass} h-fit p-5`}>
+          <div className="flex items-center gap-3">
+            <Avatar name={coach.name} />
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-slate-900">{coach.name}</p>
+              <FirmBadge firm={coach.firm} />
             </div>
-            <dl className="mt-4 space-y-3 text-sm">
-              <Field label="Role">
-                {coach.title} · {coach.yearsAtFirm} yr
-                {coach.yearsAtFirm === 1 ? "" : "s"}
-              </Field>
-              <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
-              <Field label="Coaches on">
-                <div className="flex flex-wrap gap-1.5">
-                  {focus.map((f) => (
-                    <FocusTag key={f} focusKey={f} />
-                  ))}
-                </div>
-              </Field>
-              {coach.availability && (
-                <Field label="Availability">{coach.availability}</Field>
-              )}
-            </dl>
-            <Link href="/signup/coach" className={`${btnSecondary} mt-4 w-full`}>
-              Edit profile
-            </Link>
           </div>
+          <dl className="mt-4 space-y-3 text-sm">
+            <Field label="Role">
+              {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
+            </Field>
+            <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
+            <Field label="Coaches on">
+              <div className="flex flex-wrap gap-1.5">
+                {focus.map((f) => (
+                  <FocusTag key={f} focusKey={f} />
+                ))}
+              </div>
+            </Field>
+          </dl>
+          <Link href="/signup/coach" className={`${btnSecondary} mt-4 w-full`}>
+            Edit profile
+          </Link>
         </aside>
       </div>
+
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Booked sessions</h2>
+        {bookings.length === 0 ? (
+          <EmptyState
+            title="No bookings yet"
+            body="Paint a few green hours above — students can book them instantly, and they'll show up here."
+            cta={null}
+          />
+        ) : (
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {bookings.map((b) => {
+              const when = formatSlotParts(b.startTime);
+              return (
+                <li key={b.id} className={`${cardClass} p-5`}>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={b.student.name} />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">
+                        {b.student.name}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {b.focusArea ? focusLabel(b.focusArea) : "Case coaching"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 flex items-center gap-2 text-sm font-medium text-slate-800">
+                    <CalendarClock className="size-4 text-slate-400" />
+                    {when.dateLabel} · {when.timeLabel}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                    <a
+                      href={`mailto:${b.student.email}`}
+                      className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
+                    >
+                      <Mail className="size-4" />
+                      {b.student.email}
+                    </a>
+                    <span className="text-xs text-slate-400">{formatRate(b.pricePaid)}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </Shell>
   );
 }
@@ -307,9 +298,7 @@ function Shell({
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            {title}
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
           <p className="mt-1 text-slate-600">{subtitle}</p>
         </div>
         {action}
@@ -319,13 +308,7 @@ function Shell({
   );
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -342,7 +325,7 @@ function Stat({
   accent,
 }: {
   label: string;
-  value: number;
+  value: string;
   accent: "amber" | "emerald" | "indigo";
 }) {
   const accents = {
@@ -374,22 +357,7 @@ function EmptyState({
       <Inbox className="size-8 text-slate-400" />
       <h3 className="mt-3 font-semibold text-slate-900">{title}</h3>
       <p className="mt-1 max-w-sm text-sm text-slate-500">{body}</p>
-      <div className="mt-4">{cta}</div>
-    </div>
-  );
-}
-
-function ContactBanner({ label, email }: { label: string; email: string }) {
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm">
-      <span className="text-emerald-800">{label}</span>
-      <a
-        href={`mailto:${email}`}
-        className="inline-flex items-center gap-1.5 font-medium text-emerald-700 hover:underline"
-      >
-        <Mail className="size-4" />
-        {email}
-      </a>
+      {cta && <div className="mt-4">{cta}</div>}
     </div>
   );
 }

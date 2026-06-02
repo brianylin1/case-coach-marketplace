@@ -41,14 +41,14 @@ export default async function HomePage() {
             Crack the case with coaches who&apos;ve sat in the chair.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
-            CaseCoach connects you with current and former McKinsey, Bain, and
-            BCG consultants for real mock interviews and honest feedback. Sign up
-            in under a minute — browsing is always free.
+            Browse open coaching slots from current and former McKinsey, Bain,
+            and BCG consultants — and book one instantly. Pick a time, confirm,
+            done. No request forms, no waiting to hear back.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link href="/coaches" className={`${btnPrimary} px-5 py-3 text-base`}>
+            <Link href="/sessions" className={`${btnPrimary} px-5 py-3 text-base`}>
               <Search className="size-5" />
-              Find a coach
+              Find a session
             </Link>
             <Link
               href="/signup/coach"
@@ -60,7 +60,7 @@ export default async function HomePage() {
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-slate-500">
             <span className="font-medium text-slate-700">
-              {coachCount} coaches and growing
+              {coachCount} coaches taking bookings this week
             </span>
             <span className="hidden text-slate-300 sm:inline">•</span>
             <div className="flex items-center gap-4">
@@ -80,17 +80,17 @@ export default async function HomePage() {
         <div className="flex items-end justify-between">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-              Meet a few of your coaches
+              Coaches you can book this week
             </h2>
             <p className="mt-1 text-slate-600">
-              Real consultants, organized by firm and focus area.
+              Real consultants with open slots — tap in to see their times.
             </p>
           </div>
           <Link
-            href="/coaches"
+            href="/sessions"
             className="hidden text-sm font-medium text-indigo-600 hover:underline sm:inline"
           >
-            Browse all →
+            See all sessions →
           </Link>
         </div>
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -99,10 +99,10 @@ export default async function HomePage() {
           ))}
         </div>
         <Link
-          href="/coaches"
+          href="/sessions"
           className="mt-6 inline-block text-sm font-medium text-indigo-600 hover:underline sm:hidden"
         >
-          Browse all coaches →
+          See all sessions →
         </Link>
       </section>
 
@@ -121,25 +121,25 @@ export default async function HomePage() {
               <ol className="mt-5 space-y-5">
                 <Step
                   n={1}
-                  Icon={UserPlus}
-                  title="Tell us your goals"
-                  body="Target firms and focus areas, in about 60 seconds. No resume upload."
+                  Icon={Search}
+                  title="Find a time"
+                  body="Browse open slots by day, firm, focus area, and price."
                 />
                 <Step
                   n={2}
-                  Icon={Search}
-                  title="Browse and request"
-                  body="Filter coaches by firm, focus area, and rate, then send a session request."
+                  Icon={Zap}
+                  title="Book instantly"
+                  body="Reserve in two clicks — no waiting to hear back. (Payments are simulated in this MVP.)"
                 />
                 <Step
                   n={3}
                   Icon={MessageSquare}
-                  title="Match and mock"
-                  body="Your coach accepts and you coordinate a time. Then get the reps that win offers."
+                  title="Meet your coach"
+                  body="Their contact details unlock the moment you book. Then get the reps that win offers."
                 />
               </ol>
-              <Link href="/signup/student" className={`${btnPrimary} mt-6`}>
-                Get started free
+              <Link href="/sessions" className={`${btnPrimary} mt-6`}>
+                Find a session
               </Link>
             </div>
             <div>
@@ -157,14 +157,14 @@ export default async function HomePage() {
                 <Step
                   n={2}
                   Icon={CalendarCheck}
-                  title="Receive requests"
-                  body="Motivated students reach out with exactly what they want to work on."
+                  title="Set your availability"
+                  body="Add up to 5 open slots whenever you're free to coach."
                 />
                 <Step
                   n={3}
                   Icon={Zap}
-                  title="Coach on your terms"
-                  body="Accept the ones that fit your schedule. You're always in control."
+                  title="Get booked"
+                  body="Students book and pay instantly — they just show up in your dashboard."
                 />
               </ol>
               <Link href="/signup/coach" className={`${btnSecondary} mt-6`}>
@@ -185,13 +185,13 @@ export default async function HomePage() {
           />
           <Feature
             Icon={Zap}
-            title="Low-friction by design"
-            body="No passwords, no fees to browse. Create an account and start in under a minute on either side."
+            title="Instant booking"
+            body="Pick a slot and you're confirmed — no request forms, no waiting. Contact details unlock on booking."
           />
           <Feature
             Icon={Target}
-            title="Matched to your gaps"
-            body="Filter by firm and focus area — from market sizing to the PEI — and pick the coach who fits."
+            title="Filter to fit"
+            body="Sort open sessions by day, firm, focus area, and price to find exactly the right rep."
           />
         </div>
       </section>
@@ -203,16 +203,16 @@ export default async function HomePage() {
             Your next case could be the one that lands the offer.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-indigo-100">
-            Join CaseCoach today — free to browse, and easy to start on either
-            side of the table.
+            Find an open slot and book a coach in two clicks — or open your own
+            calendar and start coaching.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/signup/student"
+              href="/sessions"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-base font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
             >
               <Search className="size-5" />
-              Find a coach
+              Book a session
             </Link>
             <Link
               href="/signup/coach"
