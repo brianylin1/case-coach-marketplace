@@ -1,0 +1,247 @@
+# CaseCoach — Project State
+
+> Living snapshot of the product, architecture, and roadmap. Keep this updated
+> as the project evolves. Last updated after PR #2 (calendar-first sessions).
+
+---
+
+## 1. Product overview
+
+**What it does:** CaseCoach is a two-sided marketplace connecting students
+prepping for **MBB** (McKinsey, Bain, BCG) case interviews with current and
+former MBB consultants who offer paid 1:1 coaching sessions.
+
+**Positioning:** "OpenTable for MBB case coaches" — a **calendar-first, instant
+booking** experience. Low friction on both sides (passwordless signup; coaches
+set availability once; students book a time in a couple of clicks).
+
+**Core user flows:**
+- **Student:** land on `/sessions` → scan a weekly calendar of open times →
+  click a time → compare the coaches free then (grouped by firm) → **Book
+  instantly** (simulated payment) → coach contact is revealed → track in
+  dashboard.
+- **Coach:** sign up → **paint a weekly availability grid** → bookings arrive
+  automatically → see booked sessions + student contact in dashboard.
+
+---
+
+## 2. Architecture
+
+- **Frontend:** Next.js 16 (App Router) + React 19, TypeScript, Tailwind CSS v4,
+  lucide-react. Pages are server components reading Prisma directly; mutations
+  go through route handlers in `app/api/**`; interactive UI (calendar, modals,
+  forms) is client components.
+- **Database:** PostgreSQL (Neon) via **Prisma 7** with the `pg` driver adapter
+  (`@prisma/adapter-pg`). Prisma 7 uses a WASM query compiler + driver adapters
+  (no Rust engine). Client generated to `app/generated/prisma/` (gitignored).
+  `DATABASE_URL` lives in `.env` / Vercel env; datasource wired in
+  `prisma.config.ts`.
+- **Hosting:** Vercel (serverless). Production = `main`. Build command:
+  `npx prisma db push --accept-data-loss && next build` (syncs schema on deploy).
+- **Auth:** lightweight **passwordless** signed-cookie sessions (HMAC over
+  `{role,id}`) in `lib/session.ts`; `getCurrentUser()` is the server-only helper.
+  Not production-grade — placeholder for magic-link/OAuth.
+- **Payments:** **SIMULATED.** `lib/payments.ts#processPayment` returns a fake
+  result ("Payment simulation for MVP"). `Booking` already stores
+  `pricePaid` / `paymentStatus` / `paymentRef` so Stripe drops in behind that
+  function (+ a webhook) without touching call sites.
+
+---
+
+## 3. Deployment setup
+
+- **Repo:** `brianylin1/case-coach-marketplace`. Default branch `main` = production.
+- **GitHub workflow:** feature branch → PR into `main` → review on Vercel preview
+  → merge → production.
+- **Vercel:** connected to the repo, auto-deploys. Production branch = `main`.
+  Env vars set for **Production + Preview + Development**: `DATABASE_URL` (Neon
+  pooled string), `SESSION_SECRET`. Build command runs `prisma db push`.
+- **Neon:** free-tier Postgres. Use the **pooled** connection string (host
+  contains `-pooler`) as `DATABASE_URL`. Tables are created/synced by the build's
+  `prisma db push` (or locally via `npm run db:setup`); demo data via
+  `npm run db:seed`.
+- **Branch strategy:** `main` = production. Feature branches prefixed `claude/…`.
+  Commits authored as `Claude <noreply@anthropic.com>` (repo git config) so they
+  show Verified.
+- **Preview deployments:** any branch with an open PR gets an automatic Vercel
+  preview at `case-coach-marketplace-git-<branch>-<scope>.vercel.app`; Vercel
+  posts a "Visit Preview" link + status check on the PR. Previews currently share
+  the **same Neon DB** as production.
+
+---
+
+## 4. Database schema (Prisma / Postgres)
+
+**Models:**
+- **Student** — `id`, `name`, `email` (unique), `targetFirms` (JSON string),
+  `focusAreas` (JSON string), `timeline?`, `goal?`, `createdAt`; has `bookings[]`.
+- **Coach** — `id`, `name`, `email` (unique), `firm`, `title`, `yearsAtFirm`,
+  `headline?`, `bio`, `focusAreas` (JSON string), `hourlyRate` (0 = pro bono),
+  `availability?` (free text), `linkedinUrl?`, `timezone` (default `"UTC"`),
+  `isActive`, `createdAt`; has `blocks[]`, `bookings[]`.
+- **AvailabilityBlock** — `id`, `coachId`, `weekday` (0=Mon…6=Sun),
+  `startMinute`, `endMinute`. A coach's **recurring weekly** availability (UTC).
+- **Booking** — `id`, `coachId`, `studentId`, `startTime` (concrete UTC),
+  `durationMins` (60), `focusArea?`, `pricePaid`, `paymentStatus`, `paymentRef?`,
+  `status` (CONFIRMED/CANCELLED), `createdAt`. **`@@unique([coachId, startTime])`**
+  prevents double-booking.
+
+**Relationships:** Coach 1—* AvailabilityBlock; Coach 1—* Booking; Student 1—*
+Booking. There is **no Slot table** — bookable 60-min sessions are **generated on
+the fly** from a coach's blocks minus existing bookings (`lib/availability.ts`).
+
+**Conventions:** list fields are JSON-string columns (`parseList` /
+`serializeList` in `lib/format.ts`); enums are plain strings validated in app
+code (`lib/constants.ts`); all times are **UTC**.
+
+---
+
+## 5. Current features
+
+- **Coach onboarding** (`/signup/coach`): name, email, firm, title, years,
+  headline, bio, focus areas, rate (or pro bono), availability text, LinkedIn.
+  Passwordless; upsert by email.
+- **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
+  (Mon–Sun × 7am–10pm), click-and-drag to add/erase (mouse + touch), saved as
+  `AvailabilityBlock`s via `PUT /api/availability`; live "hrs/week" counter.
+- **Calendar-first sessions page** (`/sessions`): weekly grid (Today + next 6
+  days × 7am–10pm); cells show a worded count ("2 coaches") + subtle firm tags;
+  populated / empty / past cells are visually distinct. Lightweight grid payload;
+  per-cell coaches fetched on click via `GET /api/sessions/cell`. **Calendar |
+  List** toggle (`?view=`).
+- **Booking flow:** click a time → coach modal → review + **simulated payment**
+  → confirmation reveals coach contact. `POST /api/bookings { coachId, startTime }`
+  validates the time is inside the coach's blocks and not taken; unique constraint
+  guards double-booking.
+- **Dashboards:** student = upcoming booked sessions + coach contact + profile
+  summary; coach = availability grid + booked sessions (with student contact) +
+  stats (hrs/week, upcoming, booked value).
+- **Profile modal** (`CoachProfilePanel`): bio, firm, role, years, focus, rate,
+  availability, LinkedIn. Reused in the calendar modal and on `/coaches/[id]`.
+- **Coach-selection modal:** coaches at a given hour grouped by firm; **Sort**
+  (Recommended / Lowest price / Most experience); rating placeholder; first 10 per
+  firm + "Show more"; wide with a sticky header and internal scroll; mobile bottom
+  sheet.
+- **Filters:** firm, focus area, price bucket — URL-driven, forwarded to the cell
+  fetch.
+
+**Demo accounts** (seed): coaches `maya.chen@coach.test`,
+`david.okafor@coach.test` (+6 more); students `jordan@student.test`,
+`sam@student.test`. Sign in at `/login` (email only).
+
+---
+
+## 6. Completed PRs
+
+- **PR #1 — "Pivot to a calendar-first booking marketplace"** *(merged into
+  `main`).* Took the v1 coach directory (browse coaches, request → accept) and
+  pivoted it to an **instant-booking** marketplace: replaced the request model
+  with `Slot` then `AvailabilityBlock` + `Booking`; **converted SQLite → Postgres
+  (Neon)** with the `pg` adapter; added the **When2Meet recurring availability
+  grid** for coaches and **on-the-fly session generation**; simulated payments
+  behind `lib/payments.ts`. (The original v1 build — directory, passwordless
+  auth, signups, dashboards — was `main`'s starting point before this PR.)
+
+- **PR #2 — "Calendar-first /sessions view with a list toggle"** *(reviewed,
+  ready to merge).* Replaced the long card list with the **weekly calendar grid**
+  as the primary discovery surface; added the fetch-on-click coach-selection
+  modal (grouped by firm, sort, rating placeholder, Show more, compact rows);
+  Calendar|List toggle; new `GET /api/sessions/cell`; plus polish: past-hour
+  styling, firm monograms → subtle in-cell tags, low-supply hint + better empty
+  state, worded counts, tighter rows, and a wider sticky-header modal.
+
+---
+
+## 7. Known limitations
+
+- **Timezone:** everything is **UTC** (calendar columns, hours, "Today",
+  generation). `Coach.timezone` exists (default UTC) but isn't used for
+  conversion yet. Non-UTC users see UTC times — the biggest pre-launch gap.
+- **Mobile:** the calendar is horizontal-scroll, not a dedicated single-day
+  view. Functional but not ideal. (Modals are proper bottom sheets.)
+- **Ratings:** placeholder only ("New · no ratings yet"); no reviews system.
+- **Payments:** simulated; no real Stripe; no coach payouts.
+- **Auth:** passwordless signed cookie — anyone with an email can sign in. No
+  verification/OAuth. Not production-grade.
+- **Other:** hourly slots only (no 30-min); `/api/sessions/cell` returns all
+  coaches for an hour (display capped per firm at 10); prod seed/demo data is
+  manual.
+
+---
+
+## 8. Product decisions made
+
+- **Why calendar-first:** students care about *time* first; a calendar scales to
+  many sessions where a card list doesn't (the grid is bounded — ≤105 cells —
+  regardless of volume); "OpenTable" familiarity. Coach details are secondary and
+  revealed on click.
+- **Why recurring availability blocks:** coaches set a weekly pattern once
+  instead of re-entering slots; far less friction, fewer rows, and sessions are
+  generated on the fly (no stale slot rows, no cron job). Trade-off: one-off
+  exceptions need a future "blackout" concept; timezone/DST handled at generation.
+- **Why modal-based coach selection:** keeps the calendar as the primary scan
+  surface; clicking a time opens a focused, sortable comparison of coaches at that
+  slot (grouped by firm); reuses the booking + profile modals; closing returns to
+  the same calendar position (client state, no navigation).
+
+---
+
+## 9. Current roadmap (ranked)
+
+Recommended next priorities (confirm before building):
+
+1. **Timezone support** — correctness gate; without it times are wrong for most
+   users. (Coach authors in their tz; student sees local; DST-correct generation.)
+2. **Coach onboarding / supply** — a two-sided marketplace needs liquidity; more
+   coaches + smoother onboarding (the demo has 8). No supply → no marketplace.
+3. **Trust signals** — drive student conversion: firm/identity verification,
+   LinkedIn proof, and the real ratings/reviews system (replaces the placeholder).
+4. **Mobile improvements** — large share of student traffic; single-day calendar
+   view + hover/preview parity. Current horizontal-scroll is a stopgap.
+5. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect). Can run
+   pro-bono/pilot first, so not the very top.
+6. **GTM tools** — analytics, referrals, email/reminders, SEO. After the core loop
+   converts.
+
+---
+
+## 10. Instructions for future Claude sessions
+
+**Workflow:** feature branch → PR into `main` → Vercel preview → merge →
+production. `main` is production; don't push product changes straight to `main`
+(docs/hotfixes only, with permission).
+
+**Create a branch:** off the latest `main` —
+`git fetch origin main && git checkout -b claude/<short-desc> origin/main`.
+
+**Open a PR:** use the GitHub MCP tools (`mcp__github__create_pull_request`,
+`base: main`, `head: <branch>`). Repo is `brianylin1/case-coach-marketplace`.
+Don't open a PR unless asked.
+
+**Preview deployments:** pushing a branch with an open PR triggers a Vercel
+preview; the URL is in the Vercel bot's PR comment / the commit status
+`target_url`. Production branch is `main`.
+
+**Rules for changes:**
+- This is **Next 16 + Prisma 7** — read `AGENTS.md` and the guides in
+  `node_modules/next/dist/docs/`; don't assume training-data APIs.
+- **Prisma 7:** `prisma db push` does **not** regenerate the client — use
+  `npm run db:push` (push + generate). Local dev needs a Postgres `DATABASE_URL`
+  in `.env`; run `npm run db:setup` then `npm run db:seed`. (Locally you can run
+  Postgres 16 at `/tmp/pgdata` on port 5433 with trust auth, since the sandbox
+  can't reach Neon over TCP.)
+- **Verify before pushing:** `npm run build` and `npm run lint` must pass. Keep
+  changes focused; commit author must be `Claude <noreply@anthropic.com>`.
+- **Don't casually change:** booking logic, the data model, or timezone behavior.
+  Payments stay behind `lib/payments.ts`.
+- **Data conventions:** list fields are JSON strings (`parseList`/`serializeList`);
+  sessions are generated on the fly in `lib/availability.ts` (no Slot table);
+  times are UTC; secrets and the generated Prisma client are gitignored.
+
+**Key files:** `app/sessions/page.tsx` (calendar), `components/SessionCalendar.tsx`,
+`components/AvailabilityGrid.tsx`, `components/BookingModal.tsx`,
+`lib/availability.ts` (generation), `lib/prisma.ts`, `lib/session.ts`,
+`lib/payments.ts`, `prisma/schema.prisma`, `prisma/seed.ts`.
+
+**Useful scripts:** `npm run dev`, `npm run build`, `npm run lint`,
+`npm run db:setup`, `npm run db:seed`, `npm run db:reset`.
