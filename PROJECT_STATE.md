@@ -1,7 +1,7 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. Last updated after PR #2 (calendar-first sessions).
+> as the project evolves. Last updated after PR #3 (timezone support).
 
 ---
 
@@ -92,23 +92,32 @@ the fly** from a coach's blocks minus existing bookings (`lib/availability.ts`).
 
 **Conventions:** list fields are JSON-string columns (`parseList` /
 `serializeList` in `lib/format.ts`); enums are plain strings validated in app
-code (`lib/constants.ts`); all times are **UTC**.
+code (`lib/constants.ts`). **Times:** stored as **UTC** instants
+(`Booking.startTime`, generated session starts). `AvailabilityBlock` minutes are
+**wall-clock in the coach's `timezone`**, converted to UTC per-date (DST-correct)
+in `lib/timezone.ts` + `lib/availability.ts`. Students see times in their own
+zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 ---
 
 ## 5. Current features
 
 - **Coach onboarding** (`/signup/coach`): name, email, firm, title, years,
-  headline, bio, focus areas, rate (or pro bono), availability text, LinkedIn.
-  Passwordless; upsert by email.
+  headline, bio, focus areas, rate (or pro bono), availability text, **timezone**
+  (defaults to the browser-detected IANA zone), LinkedIn. Passwordless; upsert by
+  email.
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
-  (Mon–Sun × 7am–10pm), click-and-drag to add/erase (mouse + touch), saved as
-  `AvailabilityBlock`s via `PUT /api/availability`; live "hrs/week" counter.
+  (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
+  click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
+  `PUT /api/availability`; live "hrs/week" counter.
 - **Calendar-first sessions page** (`/sessions`): weekly grid (Today + next 6
-  days × 7am–10pm); cells show a worded count ("2 coaches") + subtle firm tags;
+  days × 7am–10pm) **rendered in the viewer's local timezone**; rows default to
+  7am–10pm and expand only when cross-timezone supply would otherwise fall
+  outside them. Cells show a worded count ("2 coaches") + subtle firm tags;
   populated / empty / past cells are visually distinct. Lightweight grid payload;
-  per-cell coaches fetched on click via `GET /api/sessions/cell`. **Calendar |
-  List** toggle (`?view=`).
+  per-cell coaches fetched on click via `GET /api/sessions/cell` (matches any
+  coach with a session inside that local hour, so half-hour offsets work).
+  **Calendar | List** toggle (`?view=`).
 - **Booking flow:** click a time → coach modal → review + **simulated payment**
   → confirmation reveals coach contact. `POST /api/bookings { coachId, startTime }`
   validates the time is inside the coach's blocks and not taken; unique constraint
@@ -150,13 +159,31 @@ code (`lib/constants.ts`); all times are **UTC**.
   styling, firm monograms → subtle in-cell tags, low-supply hint + better empty
   state, worded counts, tighter rows, and a wider sticky-header modal.
 
+- **PR #3 — "Timezone support"** *(in progress, branch
+  `claude/affectionate-fermi-760RL`).* Made the whole app timezone-correct
+  without a schema change. New `lib/timezone.ts` (zero-dep, `Intl`-based)
+  converts between UTC instants and wall-clock parts in any IANA zone,
+  DST-correct (spring-forward gaps skipped, fall-back overlaps resolved to the
+  earlier instant). Coaches now author availability in their **own** zone
+  (`Coach.timezone`, collected at signup, defaults to detected; grid labelled);
+  `AvailabilityBlock` minutes are reinterpreted as coach-local wall time and
+  generation converts per-date. Students see every time in their **browser**
+  zone (detected by `TimezoneSync` → `cc_tz` cookie, read by `getViewerTimeZone`);
+  the calendar buckets + labels in that zone and rows expand to never hide
+  cross-zone supply. `/api/bookings` + `/api/sessions/cell` validate "on the
+  hour" in the coach's zone (fixes half-hour offsets like IST). No DDL; existing
+  UTC-default coaches keep their current behavior until they pick a zone. Manual
+  QA in `docs/timezone-qa.md`.
+
 ---
 
 ## 7. Known limitations
 
-- **Timezone:** everything is **UTC** (calendar columns, hours, "Today",
-  generation). `Coach.timezone` exists (default UTC) but isn't used for
-  conversion yet. Non-UTC users see UTC times — the biggest pre-launch gap.
+- **Timezone:** ✅ handled (PR #3) — coaches author in their zone, students see
+  their browser zone, DST-correct. Remaining caveats: viewer zone isn't persisted
+  per student (browser-detected cookie only), so first paint in a fresh session is
+  UTC until `TimezoneSync` refreshes once; ambiguous/nonexistent DST wall times
+  resolve deterministically (earlier instant / skipped) rather than prompting.
 - **Mobile:** the calendar is horizontal-scroll, not a dedicated single-day
   view. Functional but not ideal. (Modals are proper bottom sheets.)
 - **Ratings:** placeholder only ("New · no ratings yet"); no reviews system.
@@ -190,8 +217,8 @@ code (`lib/constants.ts`); all times are **UTC**.
 
 Recommended next priorities (confirm before building):
 
-1. **Timezone support** — correctness gate; without it times are wrong for most
-   users. (Coach authors in their tz; student sees local; DST-correct generation.)
+1. ~~**Timezone support**~~ — ✅ shipped in PR #3 (coach authors in their tz;
+   student sees local; DST-correct). **Next-up is supply (#2).**
 2. **Coach onboarding / supply** — a two-sided marketplace needs liquidity; more
    coaches + smoother onboarding (the demo has 8). No supply → no marketplace.
 3. **Trust signals** — drive student conversion: firm/identity verification,
@@ -236,12 +263,16 @@ preview; the URL is in the Vercel bot's PR comment / the commit status
   Payments stay behind `lib/payments.ts`.
 - **Data conventions:** list fields are JSON strings (`parseList`/`serializeList`);
   sessions are generated on the fly in `lib/availability.ts` (no Slot table);
-  times are UTC; secrets and the generated Prisma client are gitignored.
+  times are stored as UTC instants but availability is **wall-clock in the coach's
+  zone** — go through `lib/timezone.ts` for any conversion, never `getUTCHours`
+  on a session time; secrets and the generated Prisma client are gitignored.
 
 **Key files:** `app/sessions/page.tsx` (calendar), `components/SessionCalendar.tsx`,
 `components/AvailabilityGrid.tsx`, `components/BookingModal.tsx`,
-`lib/availability.ts` (generation), `lib/prisma.ts`, `lib/session.ts`,
-`lib/payments.ts`, `prisma/schema.prisma`, `prisma/seed.ts`.
+`lib/availability.ts` (generation), `lib/timezone.ts` (tz/DST math),
+`lib/viewer-tz.ts` (viewer zone cookie), `components/TimezoneSync.tsx`,
+`lib/prisma.ts`, `lib/session.ts`, `lib/payments.ts`, `prisma/schema.prisma`,
+`prisma/seed.ts`.
 
 **Useful scripts:** `npm run dev`, `npm run build`, `npm run lint`,
 `npm run db:setup`, `npm run db:seed`, `npm run db:reset`.

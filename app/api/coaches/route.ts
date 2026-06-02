@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
+import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
 import { isFirm, isFocusKey } from "@/lib/constants";
 
@@ -25,6 +26,8 @@ export async function POST(request: Request) {
   const hourlyRate = nonNegativeInt(body.hourlyRate, 100_000);
   const availability = str(body.availability, 240) || null;
   const linkedinUrl = str(body.linkedinUrl, 300) || null;
+  const timezoneRaw = str(body.timezone, 64);
+  const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
 
   if (!name) {
     return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
@@ -56,6 +59,7 @@ export async function POST(request: Request) {
     hourlyRate,
     availability,
     linkedinUrl,
+    timezone,
     isActive: true,
   };
 

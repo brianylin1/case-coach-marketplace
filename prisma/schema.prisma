@@ -38,7 +38,7 @@ model Coach {
   hourlyRate   Int                 @default(0)
   availability String?
   linkedinUrl  String?
-  timezone     String              @default("UTC") // IANA tz; UTC for now
+  timezone     String              @default("UTC") // IANA tz; availability is authored as wall-clock time in this zone
   isActive     Boolean             @default(true)
   createdAt    DateTime            @default(now())
   blocks       AvailabilityBlock[]
@@ -46,8 +46,9 @@ model Coach {
 }
 
 // One contiguous green run in a day column of the coach's weekly grid.
-// weekday: 0 = Mon … 6 = Sun. start/endMinute: minutes from midnight (UTC for
-// now), end exclusive — a 9am–12pm block is 540 … 720.
+// weekday: 0 = Mon … 6 = Sun. start/endMinute: minutes from midnight as
+// WALL-CLOCK time in the coach's timezone, end exclusive — a 9am–12pm block is
+// 540 … 720. Concrete UTC session starts are generated per-date (DST-correct).
 model AvailabilityBlock {
   id          Int   @id @default(autoincrement())
   coach       Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)

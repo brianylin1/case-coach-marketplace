@@ -11,13 +11,13 @@ import { CoachProfilePanel } from "./CoachProfilePanel";
 import { BookingModal } from "./BookingModal";
 import { FIRMS, firmStyle, focusLabel } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
+import { wallTimeToUtc } from "@/lib/timezone";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { CalendarCell, CoachView, SlotView } from "@/lib/types";
 
 type Day = { dayKey: string; short: string; sub: string };
 type SortKey = "recommended" | "price" | "experience";
 
-const pad = (n: number) => String(n).padStart(2, "0");
 const ROW_LIMIT = 10; // coaches shown per firm group before "Show more"
 
 function hourLabel(h: number): string {
@@ -26,8 +26,12 @@ function hourLabel(h: number): string {
   return `${display} ${period}`;
 }
 
-function cellStartISO(dayKey: string, hour: number): string {
-  return new Date(`${dayKey}T${pad(hour)}:00:00.000Z`).toISOString();
+// A cell is a viewer-local day + hour; resolve it to the absolute UTC instant.
+// Returns null only for a wall time that doesn't exist (DST spring-forward gap).
+function cellStartISO(dayKey: string, hour: number, timeZone: string): string | null {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const start = wallTimeToUtc(year, month, day, hour, 0, timeZone);
+  return start ? start.toISOString() : null;
 }
 
 const SORTS: { value: SortKey; label: string }[] = [
@@ -45,6 +49,7 @@ export function SessionCalendar({
   nowMs,
   hasFilters,
   listHref,
+  viewerTz,
 }: {
   days: Day[];
   hours: number[];
@@ -54,6 +59,7 @@ export function SessionCalendar({
   nowMs: number;
   hasFilters: boolean;
   listHref: string;
+  viewerTz: string;
 }) {
   const router = useRouter();
   const cellMap = useMemo(() => {
@@ -88,13 +94,15 @@ export function SessionCalendar({
   }, [slots, sort]);
 
   async function openCell(day: Day, hour: number) {
+    const iso = cellStartISO(day.dayKey, hour, viewerTz);
+    if (!iso) return;
     setSelected({ ...day, hour });
     setSlots(null);
     setExpanded(new Set());
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/sessions/cell?start=${encodeURIComponent(cellStartISO(day.dayKey, hour))}${filterQuery ? `&${filterQuery}` : ""}`,
+        `/api/sessions/cell?start=${encodeURIComponent(iso)}${filterQuery ? `&${filterQuery}` : ""}`,
       );
       const data = await res.json();
       setSlots(res.ok ? data.slots : []);
@@ -193,7 +201,8 @@ export function SessionCalendar({
               {days.map((d) => {
                 const cell = cellMap.get(`${d.dayKey}#${hour}`);
                 if (!cell) {
-                  const isPast = Date.parse(cellStartISO(d.dayKey, hour)) <= nowMs;
+                  const iso = cellStartISO(d.dayKey, hour, viewerTz);
+                  const isPast = iso ? Date.parse(iso) <= nowMs : false;
                   return (
                     <div
                       key={d.dayKey}

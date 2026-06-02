@@ -12,6 +12,7 @@ import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { focusLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
+import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
@@ -32,6 +33,7 @@ export default async function DashboardPage() {
 
 async function StudentDashboard({ studentId }: { studentId: number }) {
   const now = new Date();
+  const viewerTz = await getViewerTimeZone();
   const [student, bookings] = await Promise.all([
     prisma.student.findUniqueOrThrow({ where: { id: studentId } }),
     prisma.booking.findMany({
@@ -74,7 +76,7 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
           ) : (
             <ul className="space-y-4">
               {bookings.map((b) => {
-                const when = formatSlotParts(b.startTime);
+                const when = formatSlotParts(b.startTime, viewerTz);
                 return (
                   <li key={b.id} className={`${cardClass} p-5`}>
                     <div className="flex items-start justify-between gap-3">
@@ -202,7 +204,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <AvailabilityGrid initialCellKeys={initialCellKeys} />
+          <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
         </div>
 
         <aside className={`${cardClass} h-fit p-5`}>
@@ -243,7 +245,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
             {bookings.map((b) => {
-              const when = formatSlotParts(b.startTime);
+              const when = formatSlotParts(b.startTime, coach.timezone);
               return (
                 <li key={b.id} className={`${cardClass} p-5`}>
                   <div className="flex items-center gap-3">

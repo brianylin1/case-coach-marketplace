@@ -7,8 +7,8 @@ import { getCurrentUser } from "@/lib/session";
 import { CoachProfilePanel } from "@/components/CoachProfilePanel";
 import { BookableSlotList } from "@/components/BookableSlotList";
 import { toCoachView, toSessionView } from "@/lib/serialize";
-import { BOOKING_HORIZON_DAYS, coachSessionStarts } from "@/lib/availability";
-import { addDays, startOfUtcDay } from "@/lib/format";
+import { bookingWindow, coachSessionStarts } from "@/lib/availability";
+import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { cardClass } from "@/lib/ui";
 
 async function getCoach(idParam: string) {
@@ -39,17 +39,18 @@ export default async function CoachPage({
   if (!coach || !coach.isActive) notFound();
 
   const now = new Date();
-  const upper = addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS);
+  const viewerTz = await getViewerTimeZone();
+  const { lower, upper } = bookingWindow(now, viewerTz);
   const bookings = await prisma.booking.findMany({
-    where: { coachId: coach.id, status: "CONFIRMED", startTime: { gte: now, lt: upper } },
+    where: { coachId: coach.id, status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
     select: { startTime: true },
   });
   const taken = new Set(bookings.map((b) => new Date(b.startTime).toISOString()));
 
-  const slotViews = coachSessionStarts(coach.blocks, now, upper)
+  const slotViews = coachSessionStarts(coach.blocks, lower, upper, coach.timezone)
     .filter((s) => !taken.has(s.toISOString()))
     .slice(0, 24)
-    .map((s) => toSessionView(coach, s));
+    .map((s) => toSessionView(coach, s, viewerTz));
 
   const user = await getCurrentUser();
   const isStudent = user?.role === "student";

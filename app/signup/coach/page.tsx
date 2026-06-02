@@ -1,13 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CoachSignupForm } from "@/components/CoachSignupForm";
+import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
   title: "Coach with CaseCoach — for MBB consultants",
 };
 
-export default function CoachSignupPage() {
+export default async function CoachSignupPage() {
+  // The coach is a viewer too — default their timezone to their detected zone.
+  const defaultTimezone = await getViewerTimeZone();
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
       <div className="text-center">
@@ -20,7 +23,7 @@ export default function CoachSignupPage() {
         </p>
       </div>
       <div className={`${cardClass} mt-8 p-6 sm:p-8`}>
-        <CoachSignupForm />
+        <CoachSignupForm defaultTimezone={defaultTimezone} />
       </div>
       <div className="mt-6 space-y-1 text-center text-sm text-slate-500">
         <p>

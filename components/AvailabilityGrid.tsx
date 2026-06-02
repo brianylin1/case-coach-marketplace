@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Save } from "lucide-react";
 import { gridHours, WEEKDAY_LABELS } from "@/lib/availability";
+import { shortOffsetLabel } from "@/lib/timezone";
 import { btnPrimary, cardClass } from "@/lib/ui";
 
 const key = (weekday: number, hour: number) => `${weekday}-${hour}`;
@@ -16,8 +17,10 @@ function hourLabel(h: number): string {
 
 export function AvailabilityGrid({
   initialCellKeys,
+  timezone,
 }: {
   initialCellKeys: string[];
+  timezone: string;
 }) {
   const router = useRouter();
   const hours = gridHours();
@@ -95,6 +98,9 @@ export function AvailabilityGrid({
           <h2 className="font-semibold text-slate-900">Your weekly availability</h2>
           <p className="mt-0.5 text-sm text-slate-500">
             Tap or drag to toggle. It repeats every week.
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Times are in your timezone · {timezone} ({shortOffsetLabel(timezone)})
           </p>
         </div>
         <button

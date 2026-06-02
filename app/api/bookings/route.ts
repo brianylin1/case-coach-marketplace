@@ -8,7 +8,6 @@ import {
   isStartWithinBlocks,
   SESSION_MINUTES,
 } from "@/lib/availability";
-import { addDays, startOfUtcDay } from "@/lib/format";
 
 // A logged-in student books a generated 60-min session by (coachId, startTime).
 // Payment is simulated via lib/payments.ts (swap for Stripe later).
@@ -38,9 +37,9 @@ export async function POST(request: Request) {
   if (Number.isNaN(startTime.getTime())) {
     return NextResponse.json({ error: "Invalid session time." }, { status: 400 });
   }
-  // Sessions are on the hour.
+  // The instant must be clean; on-the-(local)-hour alignment + availability are
+  // validated against the coach's blocks (in their zone) once the coach loads.
   if (
-    startTime.getUTCMinutes() !== 0 ||
     startTime.getUTCSeconds() !== 0 ||
     startTime.getUTCMilliseconds() !== 0
   ) {
@@ -50,7 +49,10 @@ export async function POST(request: Request) {
   if (startTime <= now) {
     return NextResponse.json({ error: "That time has already passed." }, { status: 409 });
   }
-  if (startTime >= addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS)) {
+  // Generous upper bound (+1 day) so the viewer's local window can run ahead of
+  // UTC without rejecting a valid near-horizon booking.
+  const maxUpper = new Date(now.getTime() + (BOOKING_HORIZON_DAYS + 1) * 86_400_000);
+  if (startTime >= maxUpper) {
     return NextResponse.json(
       { error: "That time is outside the booking window." },
       { status: 400 },
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
   if (!coach || !coach.isActive) {
     return NextResponse.json({ error: "That session isn't available." }, { status: 404 });
   }
-  if (!isStartWithinBlocks(coach.blocks, startTime)) {
+  if (!isStartWithinBlocks(coach.blocks, startTime, coach.timezone)) {
     return NextResponse.json(
       { error: "That time is no longer available." },
       { status: 409 },
