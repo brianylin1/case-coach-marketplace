@@ -57,7 +57,7 @@ export function BookingModal({
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slotId: slot.id }),
+        body: JSON.stringify({ coachId: slot.coach.id, startTime: slot.startISO }),
       });
       const data = await res.json();
       if (!res.ok) {

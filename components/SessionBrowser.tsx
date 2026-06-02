@@ -61,7 +61,7 @@ export function SessionBrowser({
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {section.slots.map((slot) => (
                   <SlotCard
-                    key={slot.id}
+                    key={slot.key}
                     slot={slot}
                     onOpen={() => setProfileCoachId(slot.coach.id)}
                     onBook={() => setBookingSlot(slot)}
@@ -83,7 +83,7 @@ export function SessionBrowser({
               <div className="mt-2 flex flex-wrap gap-2">
                 {profileSlots.map((s) => (
                   <button
-                    key={s.id}
+                    key={s.key}
                     onClick={() => {
                       setProfileCoachId(null);
                       setBookingSlot(s);

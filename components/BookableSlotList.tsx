@@ -30,7 +30,7 @@ export function BookableSlotList({
       <div className="flex flex-wrap gap-2">
         {slots.map((s) => (
           <button
-            key={s.id}
+            key={s.key}
             onClick={() => setBookingSlot(s)}
             className="flex flex-col items-start rounded-xl border border-slate-300 px-3 py-2 text-left transition hover:border-indigo-500 hover:bg-indigo-50"
           >

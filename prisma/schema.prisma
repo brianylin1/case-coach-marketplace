@@ -1,6 +1,8 @@
 // CaseCoach — calendar-first booking marketplace.
-// Lists are stored as JSON-string columns and enums as plain strings validated
-// in app code; helpers in lib/format.ts parse the lists. See AGENTS.md.
+// Coaches paint a recurring weekly availability grid (AvailabilityBlock rows).
+// Bookable 60-min sessions are generated on the fly (see lib/availability.ts);
+// a Booking stores its own concrete UTC start time. Lists are JSON-string
+// columns and enums are plain strings validated in app code. See AGENTS.md.
 
 generator client {
   provider = "prisma-client"
@@ -15,8 +17,8 @@ model Student {
   id          Int       @id @default(autoincrement())
   name        String
   email       String    @unique
-  targetFirms String    @default("[]") // JSON array of firm names
-  focusAreas  String    @default("[]") // JSON array of focus-area keys
+  targetFirms String    @default("[]")
+  focusAreas  String    @default("[]")
   timeline    String?
   goal        String?
   createdAt   DateTime  @default(now())
@@ -24,58 +26,57 @@ model Student {
 }
 
 model Coach {
-  id           Int       @id @default(autoincrement())
+  id           Int                 @id @default(autoincrement())
   name         String
-  email        String    @unique
-  firm         String // McKinsey | Bain | BCG | Other
+  email        String              @unique
+  firm         String
   title        String
-  yearsAtFirm  Int       @default(0)
+  yearsAtFirm  Int                 @default(0)
   headline     String?
   bio          String
-  focusAreas   String    @default("[]") // JSON array of focus-area keys
-  hourlyRate   Int       @default(0) // USD per session; 0 = pro bono
-  availability String? // free-text summary
+  focusAreas   String              @default("[]")
+  hourlyRate   Int                 @default(0)
+  availability String?
   linkedinUrl  String?
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  slots        Slot[]
+  timezone     String              @default("UTC") // IANA tz; UTC for now
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  blocks       AvailabilityBlock[]
   bookings     Booking[]
 }
 
-// A bookable time offered by a coach. Availability is derived from
-// `isBooked` + `startTime` being in the future.
-model Slot {
-  id           Int      @id @default(autoincrement())
-  coach        Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  coachId      Int
-  startTime    DateTime
-  durationMins Int      @default(60)
-  isBooked     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  booking      Booking?
+// One contiguous green run in a day column of the coach's weekly grid.
+// weekday: 0 = Mon … 6 = Sun. start/endMinute: minutes from midnight (UTC for
+// now), end exclusive — a 9am–12pm block is 540 … 720.
+model AvailabilityBlock {
+  id          Int   @id @default(autoincrement())
+  coach       Coach @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  coachId     Int
+  weekday     Int
+  startMinute Int
+  endMinute   Int
 
   @@index([coachId])
-  @@index([startTime])
-  @@index([isBooked])
 }
 
-// A confirmed booking of a slot. Payment fields live here so a real payment
-// provider (Stripe) can be slotted in behind lib/payments.ts later.
+// A confirmed booking of a generated 60-min session. The unique (coachId,
+// startTime) is the hard guarantee against double-booking. Payment fields live
+// here so a real provider (Stripe) can slot in behind lib/payments.ts later.
 model Booking {
   id            Int      @id @default(autoincrement())
-  slot          Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  slotId        Int      @unique
-  student       Student  @relation(fields: [studentId], references: [id])
-  studentId     Int
   coach         Coach    @relation(fields: [coachId], references: [id])
   coachId       Int
+  student       Student  @relation(fields: [studentId], references: [id])
+  studentId     Int
+  startTime     DateTime
+  durationMins  Int      @default(60)
   focusArea     String?
   pricePaid     Int      @default(0)
-  paymentStatus String   @default("SIMULATED") // SIMULATED | PAID | REFUNDED
+  paymentStatus String   @default("SIMULATED")
   paymentRef    String?
-  status        String   @default("CONFIRMED") // CONFIRMED | CANCELLED
+  status        String   @default("CONFIRMED")
   createdAt     DateTime @default(now())
 
+  @@unique([coachId, startTime])
   @@index([studentId])
-  @@index([coachId])
 }

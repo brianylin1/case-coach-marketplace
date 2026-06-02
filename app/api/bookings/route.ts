@@ -3,10 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { str } from "@/lib/validation";
 import { processPayment } from "@/lib/payments";
+import {
+  BOOKING_HORIZON_DAYS,
+  isStartWithinBlocks,
+  SESSION_MINUTES,
+} from "@/lib/availability";
+import { addDays, startOfUtcDay } from "@/lib/format";
 
-// A logged-in student books an open slot instantly. Payment is simulated via
-// lib/payments.ts (swap for Stripe later). Returns the coach's contact details,
-// which are only revealed once a booking is confirmed.
+// A logged-in student books a generated 60-min session by (coachId, startTime).
+// Payment is simulated via lib/payments.ts (swap for Stripe later).
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "student") {
@@ -23,47 +28,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const slotId = Number(body.slotId);
+  const coachId = Number(body.coachId);
+  const startTime = new Date(str(body.startTime, 40));
   const focusArea = str(body.focusArea, 60) || null;
-  if (!Number.isInteger(slotId)) {
-    return NextResponse.json({ error: "Unknown slot." }, { status: 400 });
+
+  if (!Number.isInteger(coachId)) {
+    return NextResponse.json({ error: "Unknown coach." }, { status: 400 });
+  }
+  if (Number.isNaN(startTime.getTime())) {
+    return NextResponse.json({ error: "Invalid session time." }, { status: 400 });
+  }
+  // Sessions are on the hour.
+  if (
+    startTime.getUTCMinutes() !== 0 ||
+    startTime.getUTCSeconds() !== 0 ||
+    startTime.getUTCMilliseconds() !== 0
+  ) {
+    return NextResponse.json({ error: "Invalid session time." }, { status: 400 });
+  }
+  const now = new Date();
+  if (startTime <= now) {
+    return NextResponse.json({ error: "That time has already passed." }, { status: 409 });
+  }
+  if (startTime >= addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS)) {
+    return NextResponse.json(
+      { error: "That time is outside the booking window." },
+      { status: 400 },
+    );
   }
 
-  const slot = await prisma.slot.findUnique({
-    where: { id: slotId },
-    include: { coach: true },
+  const coach = await prisma.coach.findUnique({
+    where: { id: coachId },
+    include: { blocks: true },
   });
-  if (!slot || !slot.coach.isActive) {
+  if (!coach || !coach.isActive) {
     return NextResponse.json({ error: "That session isn't available." }, { status: 404 });
   }
-  if (slot.isBooked) {
+  if (!isStartWithinBlocks(coach.blocks, startTime)) {
     return NextResponse.json(
-      { error: "Sorry — that time was just booked. Pick another." },
+      { error: "That time is no longer available." },
       { status: 409 },
     );
   }
-  if (new Date(slot.startTime) <= new Date()) {
-    return NextResponse.json({ error: "That time has already passed." }, { status: 409 });
-  }
 
-  const amount = slot.coach.hourlyRate;
+  const amount = coach.hourlyRate;
   const payment = await processPayment({
     amount,
-    description: `CaseCoach session with ${slot.coach.name}`,
+    description: `CaseCoach session with ${coach.name}`,
   });
 
   try {
-    // Re-check inside a transaction; the unique slotId on Booking is the
-    // hard guarantee against double-booking under a race.
     const booking = await prisma.$transaction(async (tx) => {
-      const fresh = await tx.slot.findUnique({ where: { id: slotId } });
-      if (!fresh || fresh.isBooked) throw new Error("ALREADY_BOOKED");
-      await tx.slot.update({ where: { id: slotId }, data: { isBooked: true } });
+      const existing = await tx.booking.findUnique({
+        where: { coachId_startTime: { coachId, startTime } },
+      });
+      if (existing) throw new Error("TAKEN");
       return tx.booking.create({
         data: {
-          slotId,
+          coachId,
           studentId: session.id,
-          coachId: slot.coachId,
+          startTime,
+          durationMins: SESSION_MINUTES,
           focusArea,
           pricePaid: amount,
           paymentStatus: payment.status,
@@ -78,10 +103,10 @@ export async function POST(request: Request) {
       pricePaid: amount,
       paymentStatus: payment.status,
       coach: {
-        name: slot.coach.name,
-        email: slot.coach.email,
-        firm: slot.coach.firm,
-        title: slot.coach.title,
+        name: coach.name,
+        email: coach.email,
+        firm: coach.firm,
+        title: coach.title,
       },
     });
   } catch {

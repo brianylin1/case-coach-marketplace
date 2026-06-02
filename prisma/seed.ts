@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { serializeList } from "@/lib/format";
+import { serializeList, startOfUtcDay, addDays } from "@/lib/format";
+import { BOOKING_HORIZON_DAYS, coachSessionStarts } from "@/lib/availability";
 
 const coaches = [
   {
@@ -13,8 +14,10 @@ const coaches = [
     bio: "Ex-McKinsey EM based in NYC. I've coached 40+ candidates and sat on the other side of the table as an interviewer. My sessions focus on building a repeatable structuring approach so you stop memorizing frameworks and start thinking like a consultant.",
     focusAreas: ["structuring", "profitability", "mock", "behavioral"],
     hourlyRate: 120,
-    availability: "Weeknights & Sunday afternoons (ET)",
+    availability: "Weeknights & Sunday mornings (UTC)",
     linkedinUrl: "https://www.linkedin.com/in/example-maya",
+    // [weekday (0=Mon), startHour, endHour]
+    blocks: [[0, 18, 21], [2, 18, 21], [6, 9, 12]],
   },
   {
     name: "David Okafor",
@@ -26,8 +29,9 @@ const coaches = [
     bio: "Bain Senior Consultant in London. I'm the coach for you if exhibits and mental math slow you down. We'll drill quant fundamentals and practice top-down communication so your answers land in the first 10 seconds.",
     focusAreas: ["market-sizing", "math", "profitability", "mock"],
     hourlyRate: 90,
-    availability: "Weekday mornings (GMT)",
+    availability: "Weekday mornings (UTC)",
     linkedinUrl: null,
+    blocks: [[0, 8, 11], [2, 8, 11], [4, 8, 11]],
   },
   {
     name: "Priya Nair",
@@ -39,8 +43,9 @@ const coaches = [
     bio: "BCG Project Leader with 30+ candidates coached into offers. I go deep on the harder case archetypes — market entry, M&A, and due diligence — and help you handle ambiguous prompts with confidence.",
     focusAreas: ["market-entry", "ma", "structuring", "mock"],
     hourlyRate: 140,
-    availability: "Saturdays (CET)",
+    availability: "Thursday evenings & Saturdays (UTC)",
     linkedinUrl: "https://www.linkedin.com/in/example-priya",
+    blocks: [[3, 17, 20], [5, 9, 13]],
   },
   {
     name: "Liam Walsh",
@@ -52,8 +57,9 @@ const coaches = [
     bio: "McKinsey Associate who just came through the recruiting process. I remember exactly what it felt like, and I run free mock interviews for first-generation and non-target candidates. Let's get your reps in.",
     focusAreas: ["math", "market-sizing", "behavioral", "networking"],
     hourlyRate: 0,
-    availability: "Flexible, evenings (ET)",
+    availability: "Tue/Thu evenings & Sunday afternoons (UTC)",
     linkedinUrl: null,
+    blocks: [[1, 19, 22], [3, 19, 22], [6, 14, 17]],
   },
   {
     name: "Sofia Rossi",
@@ -65,8 +71,9 @@ const coaches = [
     bio: "Bain Manager and active interviewer. I give the kind of blunt, specific feedback that actually moves your score: where your structure leaks, where your synthesis is mushy, and how to fix it before the real thing.",
     focusAreas: ["structuring", "profitability", "ma", "behavioral"],
     hourlyRate: 160,
-    availability: "Sunday mornings (CET)",
+    availability: "Tuesday evenings & Sunday mornings (UTC)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
+    blocks: [[1, 18, 20], [6, 9, 12]],
   },
   {
     name: "Kenji Tanaka",
@@ -78,8 +85,9 @@ const coaches = [
     bio: "BCG Consultant in Singapore. My style is low-pressure and rep-heavy — we'll work through enough cases together that the format stops being scary and you can focus on the actual thinking.",
     focusAreas: ["market-sizing", "math", "mock"],
     hourlyRate: 85,
-    availability: "Weeknights (SGT)",
+    availability: "Mon/Wed/Fri midday (UTC)",
     linkedinUrl: null,
+    blocks: [[0, 12, 15], [2, 12, 15], [4, 12, 15]],
   },
   {
     name: "Amara Diallo",
@@ -91,8 +99,9 @@ const coaches = [
     bio: "McKinsey EM who's seen strong case-solvers get dinged on the personal experience interview. I help you build a bank of sharp, structured stories so the behavioral round becomes a strength, not a coin flip.",
     focusAreas: ["behavioral", "networking", "mock", "structuring"],
     hourlyRate: 130,
-    availability: "Weekends (ET)",
+    availability: "Weekend mornings (UTC)",
     linkedinUrl: "https://www.linkedin.com/in/example-amara",
+    blocks: [[5, 10, 13], [6, 10, 13]],
   },
   {
     name: "Tom Becker",
@@ -104,8 +113,9 @@ const coaches = [
     bio: "Bain Consultant in Munich. If you're just starting out, I'm a friendly first coach: we'll cover the case fundamentals, profitability and market-entry basics, and get your mental math comfortable.",
     focusAreas: ["profitability", "market-entry", "math"],
     hourlyRate: 75,
-    availability: "Tuesday & Thursday evenings (CET)",
+    availability: "Tuesday & Thursday evenings (UTC)",
     linkedinUrl: null,
+    blocks: [[1, 17, 20], [3, 17, 20]],
   },
 ];
 
@@ -128,30 +138,32 @@ const students = [
   },
 ];
 
-// 5 slots per coach across the next week, at varied hours (UTC).
-const SLOT_HOURS = [9, 11, 14, 16, 18];
-
-function slotTime(dayOffset: number, hour: number): Date {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  d.setUTCDate(d.getUTCDate() + dayOffset);
-  d.setUTCHours(hour, 0, 0, 0);
-  return d;
+function toBlockRows(coachId: number, blocks: number[][]) {
+  return blocks.map(([weekday, startHour, endHour]) => ({
+    coachId,
+    weekday,
+    startMinute: startHour * 60,
+    endMinute: endHour * 60,
+  }));
 }
 
 async function main() {
-  // Idempotent reset (FK-safe order).
   await prisma.booking.deleteMany();
-  await prisma.slot.deleteMany();
+  await prisma.availabilityBlock.deleteMany();
   await prisma.coach.deleteMany();
   await prisma.student.deleteMany();
 
+  let blockCount = 0;
   const createdCoaches = await Promise.all(
-    coaches.map((c) =>
-      prisma.coach.create({
-        data: { ...c, focusAreas: serializeList(c.focusAreas) },
-      }),
-    ),
+    coaches.map(async ({ blocks, focusAreas, ...rest }) => {
+      const coach = await prisma.coach.create({
+        data: { ...rest, focusAreas: serializeList(focusAreas) },
+      });
+      const rows = toBlockRows(coach.id, blocks);
+      await prisma.availabilityBlock.createMany({ data: rows });
+      blockCount += rows.length;
+      return { coach, blocks };
+    }),
   );
 
   const createdStudents = await Promise.all(
@@ -166,47 +178,39 @@ async function main() {
     ),
   );
 
-  let slotCount = 0;
-  for (let ci = 0; ci < createdCoaches.length; ci++) {
-    const coach = createdCoaches[ci];
-    for (let k = 0; k < SLOT_HOURS.length; k++) {
-      const dayOffset = ((ci + k) % 6) + 1; // 1..6 days out
-      await prisma.slot.create({
-        data: { coachId: coach.id, startTime: slotTime(dayOffset, SLOT_HOURS[k]) },
-      });
-      slotCount++;
-    }
-  }
-
-  // A sample booking so dashboards aren't empty: Jordan books Maya's first slot.
-  const maya = createdCoaches.find((c) => c.name === "Maya Chen");
+  // Sample booking: Jordan books Maya's first available session this week.
+  const maya = createdCoaches.find((c) => c.coach.name === "Maya Chen");
   const jordan = createdStudents.find((s) => s.name === "Jordan Lee");
+  let bookingCount = 0;
   if (maya && jordan) {
-    const slot = await prisma.slot.findFirst({
-      where: { coachId: maya.id, isBooked: false },
-      orderBy: { startTime: "asc" },
-    });
-    if (slot) {
-      await prisma.$transaction([
-        prisma.slot.update({ where: { id: slot.id }, data: { isBooked: true } }),
-        prisma.booking.create({
-          data: {
-            slotId: slot.id,
-            studentId: jordan.id,
-            coachId: maya.id,
-            focusArea: "structuring",
-            pricePaid: maya.hourlyRate,
-            paymentStatus: "SIMULATED",
-            paymentRef: "sim_seed_demo",
-            status: "CONFIRMED",
-          },
-        }),
-      ]);
+    const now = new Date();
+    const upper = addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS);
+    const blocks = maya.blocks.map(([weekday, startHour, endHour]) => ({
+      weekday,
+      startMinute: startHour * 60,
+      endMinute: endHour * 60,
+    }));
+    const [firstStart] = coachSessionStarts(blocks, now, upper);
+    if (firstStart) {
+      await prisma.booking.create({
+        data: {
+          coachId: maya.coach.id,
+          studentId: jordan.id,
+          startTime: firstStart,
+          durationMins: 60,
+          focusArea: "structuring",
+          pricePaid: maya.coach.hourlyRate,
+          paymentStatus: "SIMULATED",
+          paymentRef: "sim_seed_demo",
+          status: "CONFIRMED",
+        },
+      });
+      bookingCount = 1;
     }
   }
 
   console.log(
-    `Seeded ${createdCoaches.length} coaches, ${createdStudents.length} students, ${slotCount} slots, 1 sample booking.`,
+    `Seeded ${createdCoaches.length} coaches, ${createdStudents.length} students, ${blockCount} availability blocks, ${bookingCount} booking.`,
   );
 }
 

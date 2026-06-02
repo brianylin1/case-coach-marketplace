@@ -4,8 +4,9 @@ import { Prisma } from "@/app/generated/prisma/client";
 import { getCurrentUser } from "@/lib/session";
 import { SessionFilters } from "@/components/SessionFilters";
 import { SessionBrowser } from "@/components/SessionBrowser";
-import { toSlotView } from "@/lib/serialize";
+import { toSessionView } from "@/lib/serialize";
 import { isFirm, isFocusKey, priceBucket } from "@/lib/constants";
+import { BOOKING_HORIZON_DAYS, coachSessionStarts } from "@/lib/availability";
 import {
   addDays,
   dayKeyOf,
@@ -14,15 +15,13 @@ import {
   startOfUtcDay,
   upcomingDays,
 } from "@/lib/format";
-import type { DaySection } from "@/lib/types";
+import type { DaySection, SlotView } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Book an MBB case coach — CaseCoach",
   description:
     "Browse open coaching slots from McKinsey, Bain, and BCG consultants and book instantly.",
 };
-
-const WINDOW_DAYS = 7;
 
 type SearchParams = Promise<{
   date?: string;
@@ -39,11 +38,11 @@ export default async function SessionsPage({
   const { date, firm, focus, price } = await searchParams;
   const now = new Date();
   const todayStart = startOfUtcDay(now);
-  const days = upcomingDays(WINDOW_DAYS);
+  const days = upcomingDays(BOOKING_HORIZON_DAYS);
 
   // Time window: a specific day if chosen, otherwise the next 7 days.
   let lower = now;
-  let upper = addDays(todayStart, WINDOW_DAYS);
+  let upper = addDays(todayStart, BOOKING_HORIZON_DAYS);
   const selectedDate = date && days.some((d) => d.dayKey === date) ? date : "";
   if (selectedDate) {
     const dayStart = new Date(`${selectedDate}T00:00:00Z`);
@@ -64,20 +63,28 @@ export default async function SessionsPage({
     };
   }
 
-  const slots = await prisma.slot.findMany({
-    where: {
-      isBooked: false,
-      startTime: { gte: lower, lt: upper },
-      coach: coachWhere,
-    },
-    include: { coach: true },
-    orderBy: { startTime: "asc" },
-  });
+  const [coaches, bookings] = await Promise.all([
+    prisma.coach.findMany({ where: coachWhere, include: { blocks: true } }),
+    prisma.booking.findMany({
+      where: { status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
+      select: { coachId: true, startTime: true },
+    }),
+  ]);
 
-  const views = slots.map(toSlotView);
+  const taken = new Set(
+    bookings.map((b) => `${b.coachId}:${new Date(b.startTime).toISOString()}`),
+  );
 
-  // Group into day sections (insertion order is chronological since slots are
-  // already sorted by startTime).
+  // Generate bookable sessions from each coach's weekly blocks, minus booked.
+  const views: SlotView[] = [];
+  for (const coach of coaches) {
+    for (const start of coachSessionStarts(coach.blocks, lower, upper)) {
+      if (taken.has(`${coach.id}:${start.toISOString()}`)) continue;
+      views.push(toSessionView(coach, start));
+    }
+  }
+  views.sort((a, b) => a.startISO.localeCompare(b.startISO));
+
   const todayKey = dayKeyOf(todayStart);
   const sectionMap = new Map<string, DaySection>();
   for (const view of views) {
@@ -93,7 +100,9 @@ export default async function SessionsPage({
     }
     section.slots.push(view);
   }
-  const sections = [...sectionMap.values()];
+  const sections = [...sectionMap.values()].sort((a, b) =>
+    a.dayKey.localeCompare(b.dayKey),
+  );
 
   const user = await getCurrentUser();
   const isStudent = user?.role === "student";

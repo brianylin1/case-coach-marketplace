@@ -6,13 +6,15 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { CoachProfilePanel } from "@/components/CoachProfilePanel";
 import { BookableSlotList } from "@/components/BookableSlotList";
-import { toCoachView, toSlotView } from "@/lib/serialize";
+import { toCoachView, toSessionView } from "@/lib/serialize";
+import { BOOKING_HORIZON_DAYS, coachSessionStarts } from "@/lib/availability";
+import { addDays, startOfUtcDay } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
 async function getCoach(idParam: string) {
   const id = Number(idParam);
   if (!Number.isInteger(id)) return null;
-  return prisma.coach.findUnique({ where: { id } });
+  return prisma.coach.findUnique({ where: { id }, include: { blocks: true } });
 }
 
 export async function generateMetadata({
@@ -36,17 +38,22 @@ export default async function CoachPage({
   const coach = await getCoach((await params).id);
   if (!coach || !coach.isActive) notFound();
 
-  const slots = await prisma.slot.findMany({
-    where: { coachId: coach.id, isBooked: false, startTime: { gte: new Date() } },
-    include: { coach: true },
-    orderBy: { startTime: "asc" },
-    take: 12,
+  const now = new Date();
+  const upper = addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS);
+  const bookings = await prisma.booking.findMany({
+    where: { coachId: coach.id, status: "CONFIRMED", startTime: { gte: now, lt: upper } },
+    select: { startTime: true },
   });
+  const taken = new Set(bookings.map((b) => new Date(b.startTime).toISOString()));
+
+  const slotViews = coachSessionStarts(coach.blocks, now, upper)
+    .filter((s) => !taken.has(s.toISOString()))
+    .slice(0, 24)
+    .map((s) => toSessionView(coach, s));
 
   const user = await getCurrentUser();
   const isStudent = user?.role === "student";
   const coachView = toCoachView(coach);
-  const slotViews = slots.map(toSlotView);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">

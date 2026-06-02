@@ -1,4 +1,5 @@
 import { formatSlotParts, parseList } from "@/lib/format";
+import { SESSION_MINUTES } from "@/lib/availability";
 import type { CoachView, SlotView } from "@/lib/types";
 
 type CoachRow = {
@@ -31,22 +32,17 @@ export function toCoachView(coach: CoachRow): CoachView {
   };
 }
 
-type SlotRow = {
-  id: number;
-  startTime: Date;
-  durationMins: number;
-  coach: CoachRow;
-};
-
-export function toSlotView(slot: SlotRow): SlotView {
-  const parts = formatSlotParts(slot.startTime);
+// Build a bookable-session view from a coach and a concrete UTC start time.
+export function toSessionView(coach: CoachRow, start: Date): SlotView {
+  const startISO = new Date(start).toISOString();
+  const parts = formatSlotParts(start);
   return {
-    id: slot.id,
-    startISO: new Date(slot.startTime).toISOString(),
+    key: `${coach.id}:${startISO}`,
+    startISO,
     dateLabel: parts.dateLabel,
     timeLabel: parts.timeLabel,
     dayKey: parts.dayKey,
-    durationMins: slot.durationMins,
-    coach: toCoachView(slot.coach),
+    durationMins: SESSION_MINUTES,
+    coach: toCoachView(coach),
   };
 }

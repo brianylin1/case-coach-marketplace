@@ -8,8 +8,9 @@ import { Avatar } from "@/components/Avatar";
 import { FirmBadge } from "@/components/FirmBadge";
 import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
-import { AvailabilityEditor } from "@/components/AvailabilityEditor";
+import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { focusLabel } from "@/lib/constants";
+import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
@@ -34,9 +35,9 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
   const [student, bookings] = await Promise.all([
     prisma.student.findUniqueOrThrow({ where: { id: studentId } }),
     prisma.booking.findMany({
-      where: { studentId, status: "CONFIRMED", slot: { startTime: { gte: now } } },
-      include: { slot: { include: { coach: true } } },
-      orderBy: { slot: { startTime: "asc" } },
+      where: { studentId, status: "CONFIRMED", startTime: { gte: now } },
+      include: { coach: true },
+      orderBy: { startTime: "asc" },
     }),
   ]);
 
@@ -73,7 +74,7 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
           ) : (
             <ul className="space-y-4">
               {bookings.map((b) => {
-                const when = formatSlotParts(b.slot.startTime);
+                const when = formatSlotParts(b.startTime);
                 return (
                   <li key={b.id} className={`${cardClass} p-5`}>
                     <div className="flex items-start justify-between gap-3">
@@ -81,13 +82,13 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                         href={`/coaches/${b.coachId}`}
                         className="flex items-center gap-3 hover:opacity-80"
                       >
-                        <Avatar name={b.slot.coach.name} />
+                        <Avatar name={b.coach.name} />
                         <div>
                           <p className="font-semibold text-slate-900">
-                            {b.slot.coach.name}
+                            {b.coach.name}
                           </p>
                           <p className="text-sm text-slate-500">
-                            {b.slot.coach.title} · {b.slot.coach.firm}
+                            {b.coach.title} · {b.coach.firm}
                           </p>
                         </div>
                       </Link>
@@ -107,11 +108,11 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                     </div>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
                       <a
-                        href={`mailto:${b.slot.coach.email}`}
+                        href={`mailto:${b.coach.email}`}
                         className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
                       >
                         <Mail className="size-4" />
-                        {b.slot.coach.email}
+                        {b.coach.email}
                       </a>
                       <span className="text-xs text-slate-400">
                         Paid {formatRate(b.pricePaid)} · simulated
@@ -167,30 +168,26 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
 
 async function CoachDashboard({ coachId }: { coachId: number }) {
   const now = new Date();
-  const [coach, openSlots, bookings] = await Promise.all([
-    prisma.coach.findUniqueOrThrow({ where: { id: coachId } }),
-    prisma.slot.findMany({
-      where: { coachId, isBooked: false, startTime: { gte: now } },
-      orderBy: { startTime: "asc" },
+  const [coach, bookings] = await Promise.all([
+    prisma.coach.findUniqueOrThrow({
+      where: { id: coachId },
+      include: { blocks: true },
     }),
     prisma.booking.findMany({
-      where: { coachId, status: "CONFIRMED", slot: { startTime: { gte: now } } },
-      include: { slot: true, student: true },
-      orderBy: { slot: { startTime: "asc" } },
+      where: { coachId, status: "CONFIRMED", startTime: { gte: now } },
+      include: { student: true },
+      orderBy: { startTime: "asc" },
     }),
   ]);
 
-  const openSlotViews = openSlots.map((s) => {
-    const parts = formatSlotParts(s.startTime);
-    return { id: s.id, dateLabel: parts.dateLabel, timeLabel: parts.timeLabel };
-  });
+  const initialCellKeys = blocksToCellKeys(coach.blocks);
   const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
 
   return (
     <Shell
       title={`Welcome, ${coach.name.split(" ")[0]}`}
-      subtitle="Set your availability and see who's booked you."
+      subtitle="Paint your weekly availability and see who's booked you."
       action={
         <Link href={`/coaches/${coach.id}`} className={btnSecondary}>
           View public profile
@@ -198,14 +195,14 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
       }
     >
       <div className="mb-6 grid grid-cols-3 gap-4">
-        <Stat label="Open slots" value={`${openSlots.length}`} accent="indigo" />
+        <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
         <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
         <Stat label="Booked value" value={`$${earnings}`} accent="amber" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <AvailabilityEditor openSlots={openSlotViews} />
+          <AvailabilityGrid initialCellKeys={initialCellKeys} />
         </div>
 
         <aside className={`${cardClass} h-fit p-5`}>
@@ -236,19 +233,17 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
       </div>
 
       <section className="mt-8">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">
-          Booked sessions
-        </h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Booked sessions</h2>
         {bookings.length === 0 ? (
           <EmptyState
             title="No bookings yet"
-            body="Add a few open slots above — students can book them instantly, and they'll show up here."
+            body="Paint a few green hours above — students can book them instantly, and they'll show up here."
             cta={null}
           />
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
             {bookings.map((b) => {
-              const when = formatSlotParts(b.slot.startTime);
+              const when = formatSlotParts(b.startTime);
               return (
                 <li key={b.id} className={`${cardClass} p-5`}>
                   <div className="flex items-center gap-3">
@@ -274,9 +269,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                       <Mail className="size-4" />
                       {b.student.email}
                     </a>
-                    <span className="text-xs text-slate-400">
-                      {formatRate(b.pricePaid)}
-                    </span>
+                    <span className="text-xs text-slate-400">{formatRate(b.pricePaid)}</span>
                   </div>
                 </li>
               );

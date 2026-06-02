@@ -60,5 +60,3 @@ export type PriceBucketKey = (typeof PRICE_BUCKETS)[number]["key"];
 export function priceBucket(key: string | undefined) {
   return PRICE_BUCKETS.find((b) => b.key === key) ?? PRICE_BUCKETS[0];
 }
-
-export const MAX_OPEN_SLOTS = 5;
