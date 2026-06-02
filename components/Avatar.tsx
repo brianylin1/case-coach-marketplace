@@ -14,11 +14,16 @@ export function Avatar({
   size = "md",
 }: {
   name: string;
-  size?: "md" | "lg";
+  size?: "sm" | "md" | "lg";
 }) {
   const index =
     [...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % COLORS.length;
-  const dimensions = size === "lg" ? "size-16 text-xl" : "size-11 text-sm";
+  const dimensions =
+    size === "lg"
+      ? "size-16 text-xl"
+      : size === "sm"
+        ? "size-9 text-xs"
+        : "size-11 text-sm";
   return (
     <span
       className={`inline-flex ${dimensions} shrink-0 items-center justify-center rounded-full font-semibold ${COLORS[index]}`}
