@@ -142,8 +142,8 @@ code (`lib/constants.ts`); all times are **UTC**.
   behind `lib/payments.ts`. (The original v1 build — directory, passwordless
   auth, signups, dashboards — was `main`'s starting point before this PR.)
 
-- **PR #2 — "Calendar-first /sessions view with a list toggle"** *(reviewed,
-  ready to merge).* Replaced the long card list with the **weekly calendar grid**
+- **PR #2 — "Calendar-first /sessions view with a list toggle"** *(merged into
+  `main`).* Replaced the long card list with the **weekly calendar grid**
   as the primary discovery surface; added the fetch-on-click coach-selection
   modal (grouped by firm, sort, rating placeholder, Show more, compact rows);
   Calendar|List toggle; new `GET /api/sessions/cell`; plus polish: past-hour
