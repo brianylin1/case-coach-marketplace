@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
 import { FIRMS, FOCUS_AREAS } from "@/lib/constants";
+import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
-export function CoachSignupForm() {
+export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -20,6 +21,7 @@ export function CoachSignupForm() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [availability, setAvailability] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [timezone, setTimezone] = useState(defaultTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +51,7 @@ export function CoachSignupForm() {
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          timezone,
         }),
       });
       const data = await res.json();
@@ -64,6 +67,11 @@ export function CoachSignupForm() {
       setLoading(false);
     }
   }
+
+  // Ensure the detected zone is selectable even if it's not in the curated list.
+  const tzOptions = COMMON_TIMEZONES.some((t) => t.value === timezone)
+    ? COMMON_TIMEZONES
+    : [{ value: timezone, label: timezone }, ...COMMON_TIMEZONES];
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -211,6 +219,28 @@ export function CoachSignupForm() {
             placeholder="Weeknights & weekends (ET)"
           />
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="timezone">
+          Your timezone
+        </label>
+        <select
+          id="timezone"
+          className={`${inputClass} mt-1.5`}
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+        >
+          {tzOptions.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-slate-400">
+          You&apos;ll paint your weekly availability in this timezone. Students
+          see each time converted to their own.
+        </p>
       </div>
 
       <div>

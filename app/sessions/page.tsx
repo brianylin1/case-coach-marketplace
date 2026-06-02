@@ -8,15 +8,15 @@ import { SessionCalendar } from "@/components/SessionCalendar";
 import { SessionBrowser } from "@/components/SessionBrowser";
 import { toSessionView } from "@/lib/serialize";
 import { FIRMS, isFirm, isFocusKey, priceBucket } from "@/lib/constants";
-import { BOOKING_HORIZON_DAYS, coachSessionStarts, gridHours } from "@/lib/availability";
 import {
-  addDays,
-  dayKeyOf,
-  monthDayLabel,
-  relativeDayLabel,
-  startOfUtcDay,
-  upcomingDays,
-} from "@/lib/format";
+  BOOKING_HORIZON_DAYS,
+  bookingWindow,
+  calendarHours,
+  coachSessionStarts,
+} from "@/lib/availability";
+import { monthDayLabel, relativeDayLabel, upcomingDays } from "@/lib/format";
+import { getViewerTimeZone } from "@/lib/viewer-tz";
+import { zonedDayKey, zonedParts } from "@/lib/timezone";
 import type { CalendarCell, DaySection, SlotView } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -40,10 +40,9 @@ export default async function SessionsPage({
   const { view: viewParam, firm, focus, price } = await searchParams;
   const view = viewParam === "list" ? "list" : "calendar";
 
+  const viewerTz = await getViewerTimeZone();
   const now = new Date();
-  const todayStart = startOfUtcDay(now);
-  const lower = now;
-  const upper = addDays(todayStart, BOOKING_HORIZON_DAYS);
+  const { lower, upper } = bookingWindow(now, viewerTz);
 
   const coachWhere: Prisma.CoachWhereInput = { isActive: true };
   if (firm && isFirm(firm)) coachWhere.firm = firm;
@@ -91,14 +90,14 @@ export default async function SessionsPage({
     });
     const views: SlotView[] = [];
     for (const coach of coaches) {
-      for (const start of coachSessionStarts(coach.blocks, lower, upper)) {
+      for (const start of coachSessionStarts(coach.blocks, lower, upper, coach.timezone)) {
         if (taken.has(`${coach.id}:${start.toISOString()}`)) continue;
-        views.push(toSessionView(coach, start));
+        views.push(toSessionView(coach, start, viewerTz));
       }
     }
     views.sort((a, b) => a.startISO.localeCompare(b.startISO));
 
-    const todayKey = dayKeyOf(todayStart);
+    const todayKey = zonedDayKey(now, viewerTz);
     const sectionMap = new Map<string, DaySection>();
     for (const v of views) {
       let section = sectionMap.get(v.dayKey);
@@ -123,7 +122,7 @@ export default async function SessionsPage({
     // Lightweight calendar: counts + firm dots only (details fetched on click).
     const coaches = await prisma.coach.findMany({
       where: coachWhere,
-      select: { id: true, firm: true, blocks: true },
+      select: { id: true, firm: true, blocks: true, timezone: true },
     });
     const cellMap = new Map<
       string,
@@ -131,10 +130,11 @@ export default async function SessionsPage({
     >();
     const activeCoaches = new Set<number>();
     for (const coach of coaches) {
-      for (const start of coachSessionStarts(coach.blocks, lower, upper)) {
+      for (const start of coachSessionStarts(coach.blocks, lower, upper, coach.timezone)) {
         if (taken.has(`${coach.id}:${start.toISOString()}`)) continue;
-        const dayKey = dayKeyOf(start);
-        const hour = start.getUTCHours();
+        // Bucket by the viewer's local day + hour, not UTC.
+        const dayKey = zonedDayKey(start, viewerTz);
+        const hour = zonedParts(start, viewerTz).hour;
         const key = `${dayKey}#${hour}`;
         const cell = cellMap.get(key) ?? { dayKey, hour, count: 0, firms: new Set<string>() };
         cell.count += 1;
@@ -153,14 +153,15 @@ export default async function SessionsPage({
     summary = `${totalSessions} open session${totalSessions === 1 ? "" : "s"} across ${activeCoaches.size} coach${activeCoaches.size === 1 ? "" : "es"} this week`;
     content = (
       <SessionCalendar
-        days={upcomingDays(BOOKING_HORIZON_DAYS)}
-        hours={gridHours()}
+        days={upcomingDays(BOOKING_HORIZON_DAYS, viewerTz)}
+        hours={calendarHours(cells.map((c) => c.hour))}
         cells={cells}
         isStudent={Boolean(isStudent)}
         filterQuery={filterQuery}
         nowMs={now.getTime()}
         hasFilters={hasFilters}
         listHref={listHref}
+        viewerTz={viewerTz}
       />
     );
   }
@@ -182,7 +183,10 @@ export default async function SessionsPage({
         <ViewToggle view={view} />
       </div>
 
-      <p className="mt-5 text-sm text-slate-500">{summary}</p>
+      <p className="mt-5 text-sm text-slate-500">
+        {summary}{" "}
+        <span className="text-slate-400">· times shown in your local time</span>
+      </p>
 
       {content}
     </div>

@@ -33,9 +33,14 @@ export function toCoachView(coach: CoachRow): CoachView {
 }
 
 // Build a bookable-session view from a coach and a concrete UTC start time.
-export function toSessionView(coach: CoachRow, start: Date): SlotView {
+// Labels render in `viewerTimeZone` (the student's local zone).
+export function toSessionView(
+  coach: CoachRow,
+  start: Date,
+  viewerTimeZone: string,
+): SlotView {
   const startISO = new Date(start).toISOString();
-  const parts = formatSlotParts(start);
+  const parts = formatSlotParts(start, viewerTimeZone);
   return {
     key: `${coach.id}:${startISO}`,
     startISO,

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { prisma } from "@/lib/prisma";
-import { serializeList, startOfUtcDay, addDays } from "@/lib/format";
-import { BOOKING_HORIZON_DAYS, coachSessionStarts } from "@/lib/availability";
+import { serializeList } from "@/lib/format";
+import { bookingWindow, coachSessionStarts } from "@/lib/availability";
 
 const coaches = [
   {
@@ -14,9 +14,10 @@ const coaches = [
     bio: "Ex-McKinsey EM based in NYC. I've coached 40+ candidates and sat on the other side of the table as an interviewer. My sessions focus on building a repeatable structuring approach so you stop memorizing frameworks and start thinking like a consultant.",
     focusAreas: ["structuring", "profitability", "mock", "behavioral"],
     hourlyRate: 120,
-    availability: "Weeknights & Sunday mornings (UTC)",
+    availability: "Weeknights & Sunday mornings (ET)",
     linkedinUrl: "https://www.linkedin.com/in/example-maya",
-    // [weekday (0=Mon), startHour, endHour]
+    timezone: "America/New_York",
+    // [weekday (0=Mon), startHour, endHour] — wall-clock in the coach's timezone.
     blocks: [[0, 18, 21], [2, 18, 21], [6, 9, 12]],
   },
   {
@@ -29,8 +30,9 @@ const coaches = [
     bio: "Bain Senior Consultant in London. I'm the coach for you if exhibits and mental math slow you down. We'll drill quant fundamentals and practice top-down communication so your answers land in the first 10 seconds.",
     focusAreas: ["market-sizing", "math", "profitability", "mock"],
     hourlyRate: 90,
-    availability: "Weekday mornings (UTC)",
+    availability: "Weekday mornings (London)",
     linkedinUrl: null,
+    timezone: "Europe/London",
     blocks: [[0, 8, 11], [2, 8, 11], [4, 8, 11]],
   },
   {
@@ -43,8 +45,9 @@ const coaches = [
     bio: "BCG Project Leader with 30+ candidates coached into offers. I go deep on the harder case archetypes — market entry, M&A, and due diligence — and help you handle ambiguous prompts with confidence.",
     focusAreas: ["market-entry", "ma", "structuring", "mock"],
     hourlyRate: 140,
-    availability: "Thursday evenings & Saturdays (UTC)",
+    availability: "Thursday evenings & Saturdays (IST)",
     linkedinUrl: "https://www.linkedin.com/in/example-priya",
+    timezone: "Asia/Kolkata",
     blocks: [[3, 17, 20], [5, 9, 13]],
   },
   {
@@ -57,8 +60,9 @@ const coaches = [
     bio: "McKinsey Associate who just came through the recruiting process. I remember exactly what it felt like, and I run free mock interviews for first-generation and non-target candidates. Let's get your reps in.",
     focusAreas: ["math", "market-sizing", "behavioral", "networking"],
     hourlyRate: 0,
-    availability: "Tue/Thu evenings & Sunday afternoons (UTC)",
+    availability: "Tue/Thu evenings & Sunday afternoons (PT)",
     linkedinUrl: null,
+    timezone: "America/Los_Angeles",
     blocks: [[1, 19, 22], [3, 19, 22], [6, 14, 17]],
   },
   {
@@ -71,8 +75,9 @@ const coaches = [
     bio: "Bain Manager and active interviewer. I give the kind of blunt, specific feedback that actually moves your score: where your structure leaks, where your synthesis is mushy, and how to fix it before the real thing.",
     focusAreas: ["structuring", "profitability", "ma", "behavioral"],
     hourlyRate: 160,
-    availability: "Tuesday evenings & Sunday mornings (UTC)",
+    availability: "Tuesday evenings & Sunday mornings (CET)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
+    timezone: "Europe/Paris",
     blocks: [[1, 18, 20], [6, 9, 12]],
   },
   {
@@ -85,8 +90,9 @@ const coaches = [
     bio: "BCG Consultant in Singapore. My style is low-pressure and rep-heavy — we'll work through enough cases together that the format stops being scary and you can focus on the actual thinking.",
     focusAreas: ["market-sizing", "math", "mock"],
     hourlyRate: 85,
-    availability: "Mon/Wed/Fri midday (UTC)",
+    availability: "Mon/Wed/Fri midday (SGT)",
     linkedinUrl: null,
+    timezone: "Asia/Singapore",
     blocks: [[0, 12, 15], [2, 12, 15], [4, 12, 15]],
   },
   {
@@ -99,8 +105,9 @@ const coaches = [
     bio: "McKinsey EM who's seen strong case-solvers get dinged on the personal experience interview. I help you build a bank of sharp, structured stories so the behavioral round becomes a strength, not a coin flip.",
     focusAreas: ["behavioral", "networking", "mock", "structuring"],
     hourlyRate: 130,
-    availability: "Weekend mornings (UTC)",
+    availability: "Weekend mornings (CT)",
     linkedinUrl: "https://www.linkedin.com/in/example-amara",
+    timezone: "America/Chicago",
     blocks: [[5, 10, 13], [6, 10, 13]],
   },
   {
@@ -113,8 +120,9 @@ const coaches = [
     bio: "Bain Consultant in Munich. If you're just starting out, I'm a friendly first coach: we'll cover the case fundamentals, profitability and market-entry basics, and get your mental math comfortable.",
     focusAreas: ["profitability", "market-entry", "math"],
     hourlyRate: 75,
-    availability: "Tuesday & Thursday evenings (UTC)",
+    availability: "Tuesday & Thursday evenings (CET)",
     linkedinUrl: null,
+    timezone: "Europe/Berlin",
     blocks: [[1, 17, 20], [3, 17, 20]],
   },
 ];
@@ -184,13 +192,13 @@ async function main() {
   let bookingCount = 0;
   if (maya && jordan) {
     const now = new Date();
-    const upper = addDays(startOfUtcDay(now), BOOKING_HORIZON_DAYS);
+    const { lower, upper } = bookingWindow(now, maya.coach.timezone);
     const blocks = maya.blocks.map(([weekday, startHour, endHour]) => ({
       weekday,
       startMinute: startHour * 60,
       endMinute: endHour * 60,
     }));
-    const [firstStart] = coachSessionStarts(blocks, now, upper);
+    const [firstStart] = coachSessionStarts(blocks, lower, upper, maya.coach.timezone);
     if (firstStart) {
       await prisma.booking.create({
         data: {

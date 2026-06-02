@@ -1,6 +1,8 @@
 // Helpers for the JSON-string list columns and display formatting.
 // Safe to import from both client and server components.
 
+import { zonedDayKey, zonedParts } from "@/lib/timezone";
+
 export function parseList(json: string | null | undefined): string[] {
   if (!json) return [];
   try {
@@ -28,19 +30,39 @@ export function initials(name: string): string {
     .join("");
 }
 
-// ----- Slot / calendar formatting (all in UTC for determinism) -----
+// ----- Slot / calendar formatting -----
+// Instant labels (formatSlotParts) render in a given IANA zone. Civil-day labels
+// (relativeDayLabel / monthDayLabel / upcomingDays) operate on "YYYY-MM-DD" day
+// keys, which are zone-agnostic once computed: a key is anchored at noon UTC, so
+// formatting it in UTC yields that calendar day's weekday / month-day.
 
-const FMT_SHORT_DATE = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
-const FMT_TIME = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
-  minute: "2-digit",
-  timeZone: "UTC",
-});
+const DAY_MS = 86_400_000;
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+type SlotFmt = { date: Intl.DateTimeFormat; time: Intl.DateTimeFormat };
+const slotFmtCache = new Map<string, SlotFmt>();
+
+function slotFormatters(timeZone: string): SlotFmt {
+  let fmt = slotFmtCache.get(timeZone);
+  if (!fmt) {
+    fmt = {
+      date: new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        timeZone,
+      }),
+      time: new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone,
+      }),
+    };
+    slotFmtCache.set(timeZone, fmt);
+  }
+  return fmt;
+}
+
 const FMT_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
@@ -55,56 +77,55 @@ const FMT_WEEKDAY_SHORT = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
-export function startOfUtcDay(date: Date): Date {
-  const d = new Date(date);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+// Noon-UTC anchor for a "YYYY-MM-DD" day key (noon dodges any offset edge).
+function civilNoon(dayKey: string): Date {
+  return new Date(`${dayKey}T12:00:00Z`);
 }
 
-export function addDays(date: Date, n: number): Date {
-  const d = new Date(date);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d;
+function dayKeyFromAnchor(anchor: Date): string {
+  return `${anchor.getUTCFullYear()}-${pad2(anchor.getUTCMonth() + 1)}-${pad2(anchor.getUTCDate())}`;
 }
 
-export function dayKeyOf(date: Date): string {
-  return new Date(date).toISOString().slice(0, 10);
+function addCivilDays(dayKey: string, n: number): string {
+  return dayKeyFromAnchor(new Date(civilNoon(dayKey).getTime() + n * DAY_MS));
 }
 
-export function formatSlotParts(date: Date): {
-  dateLabel: string;
-  timeLabel: string;
-  dayKey: string;
-} {
+// Labels + day key for a concrete instant, rendered in the viewer's zone.
+export function formatSlotParts(
+  date: Date,
+  timeZone: string,
+): { dateLabel: string; timeLabel: string; dayKey: string } {
+  const fmt = slotFormatters(timeZone);
   return {
-    dateLabel: FMT_SHORT_DATE.format(date),
-    timeLabel: FMT_TIME.format(date),
-    dayKey: dayKeyOf(date),
+    dateLabel: fmt.date.format(date),
+    timeLabel: fmt.time.format(date),
+    dayKey: zonedDayKey(date, timeZone),
   };
 }
 
 export function relativeDayLabel(dayKey: string, todayKey: string): string {
   if (dayKey === todayKey) return "Today";
-  const tomorrowKey = dayKeyOf(addDays(new Date(`${todayKey}T00:00:00Z`), 1));
-  if (dayKey === tomorrowKey) return "Tomorrow";
-  return FMT_WEEKDAY_LONG.format(new Date(`${dayKey}T00:00:00Z`));
+  if (dayKey === addCivilDays(todayKey, 1)) return "Tomorrow";
+  return FMT_WEEKDAY_LONG.format(civilNoon(dayKey));
 }
 
 export function monthDayLabel(dayKey: string): string {
-  return FMT_MONTH_DAY.format(new Date(`${dayKey}T00:00:00Z`));
+  return FMT_MONTH_DAY.format(civilNoon(dayKey));
 }
 
-// Day chips for the next `n` days, starting today (UTC).
+// Day chips for the next `n` days, starting today in `timeZone`.
 export function upcomingDays(
   n: number,
+  timeZone: string,
 ): { dayKey: string; short: string; sub: string }[] {
-  const today = startOfUtcDay(new Date());
+  const today = zonedParts(new Date(), timeZone);
+  const base = Date.UTC(today.year, today.month - 1, today.day, 12);
   return Array.from({ length: n }, (_, i) => {
-    const d = addDays(today, i);
+    const anchor = new Date(base + i * DAY_MS);
     return {
-      dayKey: dayKeyOf(d),
-      short: i === 0 ? "Today" : FMT_WEEKDAY_SHORT.format(d),
-      sub: FMT_MONTH_DAY.format(d),
+      dayKey: dayKeyFromAnchor(anchor),
+      short: i === 0 ? "Today" : FMT_WEEKDAY_SHORT.format(anchor),
+      sub: FMT_MONTH_DAY.format(anchor),
     };
   });
 }
