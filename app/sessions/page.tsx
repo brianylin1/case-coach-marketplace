@@ -64,6 +64,10 @@ export default async function SessionsPage({
   if (focus && isFocusKey(focus)) fq.set("focus", focus);
   if (price && price !== "any") fq.set("price", price);
   const filterQuery = fq.toString();
+  const hasFilters = filterQuery.length > 0;
+  const listParams = new URLSearchParams(filterQuery);
+  listParams.set("view", "list");
+  const listHref = `/sessions?${listParams.toString()}`;
 
   const [user, bookings] = await Promise.all([
     getCurrentUser(),
@@ -154,6 +158,9 @@ export default async function SessionsPage({
         cells={cells}
         isStudent={Boolean(isStudent)}
         filterQuery={filterQuery}
+        nowMs={now.getTime()}
+        hasFilters={hasFilters}
+        listHref={listHref}
       />
     );
   }

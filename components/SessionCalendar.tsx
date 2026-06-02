@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Zap } from "lucide-react";
+import { CalendarX, Loader2, Star, X, Zap } from "lucide-react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
@@ -15,6 +16,9 @@ import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { CalendarCell, CoachView, SlotView } from "@/lib/types";
 
 type Day = { dayKey: string; short: string; sub: string };
+type SortKey = "recommended" | "price" | "experience";
+
+const pad = (n: number) => String(n).padStart(2, "0");
 
 function hourLabel(h: number): string {
   const period = h < 12 ? "AM" : "PM";
@@ -22,18 +26,34 @@ function hourLabel(h: number): string {
   return `${display} ${period}`;
 }
 
+function cellStartISO(dayKey: string, hour: number): string {
+  return new Date(`${dayKey}T${pad(hour)}:00:00.000Z`).toISOString();
+}
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "recommended", label: "Recommended" },
+  { value: "price", label: "Lowest price" },
+  { value: "experience", label: "Most experience" },
+];
+
 export function SessionCalendar({
   days,
   hours,
   cells,
   isStudent,
   filterQuery,
+  nowMs,
+  hasFilters,
+  listHref,
 }: {
   days: Day[];
   hours: number[];
   cells: CalendarCell[];
   isStudent: boolean;
   filterQuery: string;
+  nowMs: number;
+  hasFilters: boolean;
+  listHref: string;
 }) {
   const router = useRouter();
   const cellMap = useMemo(() => {
@@ -42,30 +62,37 @@ export function SessionCalendar({
     return map;
   }, [cells]);
 
+  const total = useMemo(() => cells.reduce((sum, c) => sum + c.count, 0), [cells]);
+
   const [selected, setSelected] = useState<(Day & { hour: number }) | null>(null);
   const [slots, setSlots] = useState<SlotView[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sort, setSort] = useState<SortKey>("recommended");
   const [bookingSlot, setBookingSlot] = useState<SlotView | null>(null);
   const [profileCoach, setProfileCoach] = useState<CoachView | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
 
   const groups = useMemo(() => {
     if (!slots) return [];
+    const cmp =
+      sort === "price"
+        ? (a: SlotView, b: SlotView) => a.coach.hourlyRate - b.coach.hourlyRate
+        : sort === "experience"
+          ? (a: SlotView, b: SlotView) => b.coach.yearsAtFirm - a.coach.yearsAtFirm
+          : (a: SlotView, b: SlotView) => a.coach.name.localeCompare(b.coach.name);
     return FIRMS.map((firm) => ({
       firm,
-      slots: slots.filter((s) => s.coach.firm === firm),
+      slots: slots.filter((s) => s.coach.firm === firm).sort(cmp),
     })).filter((g) => g.slots.length > 0);
-  }, [slots]);
+  }, [slots, sort]);
 
   async function openCell(day: Day, hour: number) {
     setSelected({ ...day, hour });
     setSlots(null);
     setLoading(true);
-    const startISO = new Date(
-      `${day.dayKey}T${String(hour).padStart(2, "0")}:00:00.000Z`,
-    ).toISOString();
     try {
       const res = await fetch(
-        `/api/sessions/cell?start=${encodeURIComponent(startISO)}${filterQuery ? `&${filterQuery}` : ""}`,
+        `/api/sessions/cell?start=${encodeURIComponent(cellStartISO(day.dayKey, hour))}${filterQuery ? `&${filterQuery}` : ""}`,
       );
       const data = await res.json();
       setSlots(res.ok ? data.slots : []);
@@ -84,20 +111,56 @@ export function SessionCalendar({
   if (cells.length === 0) {
     return (
       <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-        <h2 className="font-semibold text-slate-900">No open sessions this week</h2>
+        <CalendarX className="size-8 text-slate-400" />
+        <h2 className="mt-3 font-semibold text-slate-900">No open sessions this week</h2>
         <p className="mt-1 max-w-sm text-sm text-slate-500">
-          Try clearing a filter, or check back as coaches add availability.
+          {hasFilters
+            ? "No coaches match these filters in the next 7 days."
+            : "Check back soon as coaches add availability."}{" "}
+          You can also browse everything in List view.
         </p>
+        <div className="mt-4 flex gap-2">
+          {hasFilters && (
+            <Link href="/sessions" className={btnSecondary}>
+              Clear filters
+            </Link>
+          )}
+          <Link href={listHref} className={btnPrimary}>
+            Switch to List view
+          </Link>
+        </div>
       </div>
     );
   }
 
+  const showHint = total > 0 && total < 8 && !hintDismissed;
+
   return (
     <div className="mt-6">
-      <div className="mb-3 flex items-center gap-4 text-xs text-slate-500">
+      {showHint && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>
+            Only a few open times this week.{" "}
+            <Link href={listHref} className="font-medium underline">
+              See them all in List view
+            </Link>
+            .
+          </span>
+          <button
+            type="button"
+            onClick={() => setHintDismissed(true)}
+            aria-label="Dismiss"
+            className="shrink-0 text-amber-500 hover:text-amber-700"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
         {(["McKinsey", "Bain", "BCG"] as const).map((f) => (
           <span key={f} className="inline-flex items-center gap-1.5">
-            <span className={`size-2 rounded-full ${firmStyle(f).dot}`} />
+            <FirmMonogram firm={f} />
             {f}
           </span>
         ))}
@@ -128,10 +191,20 @@ export function SessionCalendar({
               {days.map((d) => {
                 const cell = cellMap.get(`${d.dayKey}#${hour}`);
                 if (!cell) {
+                  const isPast = Date.parse(cellStartISO(d.dayKey, hour)) <= nowMs;
                   return (
                     <div
                       key={d.dayKey}
-                      className="h-12 border-b border-l border-slate-100"
+                      aria-hidden
+                      className={`h-12 border-b border-l border-slate-100 ${isPast ? "bg-slate-100/70" : ""}`}
+                      style={
+                        isPast
+                          ? {
+                              backgroundImage:
+                                "repeating-linear-gradient(45deg, rgb(241 245 249), rgb(241 245 249) 5px, transparent 5px, transparent 10px)",
+                            }
+                          : undefined
+                      }
                     />
                   );
                 }
@@ -143,15 +216,12 @@ export function SessionCalendar({
                     aria-label={`${d.short} ${d.sub}, ${hourLabel(hour)} — ${cell.count} coaches available`}
                     className="flex h-12 flex-col items-center justify-center gap-0.5 border-b border-l border-slate-100 bg-indigo-50 transition hover:bg-indigo-100"
                   >
-                    <span className="text-sm font-semibold text-indigo-700">
+                    <span className="text-sm font-semibold leading-none text-indigo-700">
                       {cell.count}
                     </span>
-                    <span className="flex gap-0.5">
+                    <span className="flex flex-wrap justify-center gap-0.5 px-0.5">
                       {cell.firms.slice(0, 3).map((f) => (
-                        <span
-                          key={f}
-                          className={`size-1.5 rounded-full ${firmStyle(f).dot}`}
-                        />
+                        <FirmMonogram key={f} firm={f} />
                       ))}
                     </span>
                   </button>
@@ -162,7 +232,7 @@ export function SessionCalendar({
         </div>
       </div>
 
-      {/* Cell modal: coaches at this exact day/hour, grouped by firm */}
+      {/* Cell modal: coaches at this exact day/hour, grouped by firm, sortable */}
       <Modal open={selected !== null} onClose={closeCell}>
         {selected && (
           <div className="p-6">
@@ -181,40 +251,60 @@ export function SessionCalendar({
                 These sessions were just taken — try another time.
               </p>
             ) : (
-              <div className="mt-4 space-y-5">
-                {groups.map((group) => (
-                  <div key={group.firm}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <FirmBadge firm={group.firm} />
-                      <span className="text-xs text-slate-400">
-                        {group.slots.length} available
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      {group.slots.map((slot) => (
-                        <CoachRow
-                          key={slot.key}
-                          slot={slot}
-                          onBook={() => {
-                            setSelected(null);
-                            setBookingSlot(slot);
-                          }}
-                          onViewProfile={() => {
-                            setSelected(null);
-                            setProfileCoach(slot.coach);
-                          }}
-                        />
+              <>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className="text-xs text-slate-400">
+                    {slots.length} coach{slots.length === 1 ? "" : "es"}
+                  </span>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                    Sort
+                    <select
+                      value={sort}
+                      onChange={(e) => setSort(e.target.value as SortKey)}
+                      className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
+                    >
+                      {SORTS.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
                       ))}
+                    </select>
+                  </label>
+                </div>
+                <div className="mt-4 space-y-5">
+                  {groups.map((group) => (
+                    <div key={group.firm}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <FirmBadge firm={group.firm} />
+                        <span className="text-xs text-slate-400">
+                          {group.slots.length} available
+                        </span>
+                      </div>
+                      <div className="space-y-3">
+                        {group.slots.map((slot) => (
+                          <CoachRow
+                            key={slot.key}
+                            slot={slot}
+                            onBook={() => {
+                              setSelected(null);
+                              setBookingSlot(slot);
+                            }}
+                            onViewProfile={() => {
+                              setSelected(null);
+                              setProfileCoach(slot.coach);
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
       </Modal>
 
-      {/* Reused coach profile modal */}
       <Modal open={profileCoach !== null} onClose={() => setProfileCoach(null)}>
         {profileCoach && (
           <div className="p-6">
@@ -223,7 +313,6 @@ export function SessionCalendar({
         )}
       </Modal>
 
-      {/* Reused booking flow */}
       <BookingModal
         slot={bookingSlot}
         isStudent={isStudent}
@@ -231,6 +320,17 @@ export function SessionCalendar({
         onBooked={() => router.refresh()}
       />
     </div>
+  );
+}
+
+function FirmMonogram({ firm }: { firm: string }) {
+  const style = firmStyle(firm);
+  return (
+    <span
+      className={`inline-flex items-center rounded px-1 text-[9px] font-semibold leading-4 ring-1 ring-inset ${style.badge}`}
+    >
+      {style.short}
+    </span>
   );
 }
 
@@ -254,6 +354,10 @@ function CoachRow({
             <p className="text-sm text-slate-500">
               {c.title} · {c.yearsAtFirm} yr{c.yearsAtFirm === 1 ? "" : "s"}
             </p>
+            <span className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+              <Star className="size-3.5" />
+              New · no ratings yet
+            </span>
           </div>
         </div>
         <span className="shrink-0 text-sm font-semibold text-slate-900">
