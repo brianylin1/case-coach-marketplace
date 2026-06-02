@@ -34,3 +34,12 @@ export type DaySection = {
   dateLabel: string; // "May 31"
   slots: SlotView[];
 };
+
+// One cell of the weekly calendar: a specific day + hour. Lightweight — the
+// full coach list is fetched on click (see /api/sessions/cell).
+export type CalendarCell = {
+  dayKey: string;
+  hour: number; // 0–23 (UTC)
+  count: number; // coaches available
+  firms: string[]; // distinct firms present, ordered McKinsey/Bain/BCG/Other
+};
