@@ -33,6 +33,7 @@ const coaches = [
     availability: "Weekday mornings (London)",
     linkedinUrl: null,
     timezone: "Europe/London",
+    meetingUrl: "https://zoom.us/j/5559876543",
     blocks: [[0, 8, 11], [2, 8, 11], [4, 8, 11]],
   },
   {
@@ -78,6 +79,7 @@ const coaches = [
     availability: "Tuesday evenings & Sunday mornings (CET)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
     timezone: "Europe/Paris",
+    meetingUrl: "https://meet.google.com/abc-defg-hij",
     blocks: [[1, 18, 20], [6, 9, 12]],
   },
   {

@@ -121,7 +121,12 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Booking flow:** click a time → coach modal → review + **simulated payment**
   → confirmation reveals coach contact. `POST /api/bookings { coachId, startTime }`
   validates the time is inside the coach's blocks and not taken; unique constraint
-  guards double-booking.
+  guards double-booking. On success it resolves a **meeting link** (the coach's
+  `meetingUrl`, else a unique auto-generated Jitsi room), then (via `after()`)
+  **emails both parties a calendar invite** (`.ics`) with times in each
+  recipient's zone — Resend, simulated unless production (see PR #4). The
+  confirmation modal shows the join link + Google/Outlook/`.ics` "Add to calendar"
+  buttons; `GET /api/bookings/[id]/ics` serves the invite to either party.
 - **Dashboards:** student = upcoming booked sessions + coach contact + profile
   summary; coach = availability grid + booked sessions (with student contact) +
   stats (hrs/week, upcoming, booked value).
@@ -174,6 +179,22 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   hour" in the coach's zone (fixes half-hour offsets like IST). No DDL; existing
   UTC-default coaches keep their current behavior until they pick a zone. Manual
   QA in `docs/timezone-qa.md`.
+
+- **PR #4 — "Booking calendar invites + email"** *(in progress, branch
+  `claude/booking-calendar-invites`, stacked on PR #3).* Booking now auto-creates
+  a calendar event and emails both parties. New `lib/ics.ts` (zero-dep RFC 5545
+  builder: UTC times, line-folding, `METHOD:REQUEST`, organizer/attendees, 1h
+  alarm), `lib/email.ts` (Resend behind a `lib/payments.ts`-style shim; **real
+  sends only in production**, simulated otherwise so the shared-DB preview never
+  emails real people), and `lib/calendar-links.ts` (Google/Outlook web links).
+  Every booking gets a usable join link — the coach's `meetingUrl` or a unique
+  auto-generated Jitsi room — snapshotted on the booking. Emails go out via
+  `after()` (non-blocking; a mail failure never fails a paid booking) with times
+  in each recipient's zone; `Booking.emailStatus` tracks the result. Added
+  `GET /api/bookings/[id]/ics` (authorized download), confirmation-modal join
+  link + "Add to calendar" buttons, and a coach-signup `meetingUrl` field.
+  Additive schema only (`Coach.meetingUrl`, `Booking.meetingUrl` + `emailStatus`).
+  No Google/Microsoft OAuth, no free/busy, no reschedule/cancel (future).
 
 ---
 

@@ -38,6 +38,7 @@ model Coach {
   hourlyRate   Int                 @default(0)
   availability String?
   linkedinUrl  String?
+  meetingUrl   String?             // coach's own video room; blank = auto Jitsi per booking
   timezone     String              @default("UTC") // IANA tz; availability is authored as wall-clock time in this zone
   isActive     Boolean             @default(true)
   createdAt    DateTime            @default(now())
@@ -76,6 +77,8 @@ model Booking {
   paymentStatus String   @default("SIMULATED")
   paymentRef    String?
   status        String   @default("CONFIRMED")
+  meetingUrl    String?  // resolved join link (coach's room or auto Jitsi), snapshotted at booking
+  emailStatus   String   @default("PENDING") // PENDING | SENT | SIMULATED | FAILED
   createdAt     DateTime @default(now())
 
   @@unique([coachId, startTime])

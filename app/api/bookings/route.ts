@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { str } from "@/lib/validation";
 import { processPayment } from "@/lib/payments";
+import { buildBookingEvent, buildIcs } from "@/lib/ics";
+import { sendBookingEmails } from "@/lib/email";
 import {
   BOOKING_HORIZON_DAYS,
   isStartWithinBlocks,
@@ -73,6 +77,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const student = await prisma.student.findUnique({ where: { id: session.id } });
+  if (!student) {
+    return NextResponse.json(
+      { error: "Your session has expired — please sign in again." },
+      { status: 401 },
+    );
+  }
+
+  // Every booking gets a usable join link: the coach's own room if set, else a
+  // unique auto-generated Jitsi room. Snapshotted onto the booking so the email
+  // and the .ics download always reference the same link.
+  const meetingUrl =
+    coach.meetingUrl?.trim() ||
+    `https://meet.jit.si/CaseCoach-${randomBytes(6).toString("hex")}`;
+
   const amount = coach.hourlyRate;
   const payment = await processPayment({
     amount,
@@ -96,14 +115,59 @@ export async function POST(request: Request) {
           paymentStatus: payment.status,
           paymentRef: payment.reference,
           status: "CONFIRMED",
+          meetingUrl,
         },
       });
+    });
+
+    // Capture the student's display zone (cc_tz cookie) in request scope.
+    const studentTimezone = await getViewerTimeZone();
+    // Build the invite + email both parties after the response is sent, so a
+    // mail hiccup never fails a paid booking (Vercel keeps the function alive).
+    after(async () => {
+      try {
+        const ics = buildIcs(
+          buildBookingEvent({
+            bookingId: booking.id,
+            start: startTime,
+            durationMins: SESSION_MINUTES,
+            coachName: coach.name,
+            coachEmail: coach.email,
+            studentName: student.name,
+            studentEmail: student.email,
+            focusArea,
+            meetingUrl,
+          }),
+        );
+        const result = await sendBookingEmails({
+          bookingId: booking.id,
+          start: startTime,
+          durationMins: SESSION_MINUTES,
+          coach: { name: coach.name, email: coach.email, timezone: coach.timezone },
+          student: { name: student.name, email: student.email },
+          studentTimezone,
+          focusArea,
+          pricePaid: amount,
+          meetingUrl,
+          ics,
+        });
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { emailStatus: result },
+        });
+      } catch (err) {
+        console.error(`booking ${booking.id} notify failed`, err);
+        await prisma.booking
+          .update({ where: { id: booking.id }, data: { emailStatus: "FAILED" } })
+          .catch(() => {});
+      }
     });
 
     return NextResponse.json({
       id: booking.id,
       pricePaid: amount,
       paymentStatus: payment.status,
+      meetingUrl,
       coach: {
         name: coach.name,
         email: coach.email,

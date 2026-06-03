@@ -28,6 +28,10 @@ export async function POST(request: Request) {
   const linkedinUrl = str(body.linkedinUrl, 300) || null;
   const timezoneRaw = str(body.timezone, 64);
   const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
+  // Optional personal video room; must be an http(s) URL or it's ignored (a
+  // unique Jitsi room is generated per booking when this is blank).
+  const meetingUrlRaw = str(body.meetingUrl, 300);
+  const meetingUrl = /^https?:\/\/\S+$/i.test(meetingUrlRaw) ? meetingUrlRaw : null;
 
   if (!name) {
     return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
@@ -60,6 +64,7 @@ export async function POST(request: Request) {
     availability,
     linkedinUrl,
     timezone,
+    meetingUrl,
     isActive: true,
   };
 

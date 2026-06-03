@@ -220,6 +220,15 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
+            <Field label="Meeting room">
+              {coach.meetingUrl ? (
+                <span className="break-all text-slate-700">{coach.meetingUrl}</span>
+              ) : (
+                <span className="text-slate-400">
+                  Auto · a unique link is created per booking
+                </span>
+              )}
+            </Field>
             <Field label="Coaches on">
               <div className="flex flex-wrap gap-1.5">
                 {focus.map((f) => (

@@ -21,6 +21,7 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
   const [hourlyRate, setHourlyRate] = useState("");
   const [availability, setAvailability] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [meetingUrl, setMeetingUrl] = useState("");
   const [timezone, setTimezone] = useState(defaultTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,7 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          meetingUrl,
           timezone,
         }),
       });
@@ -240,6 +242,23 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
         <p className="mt-1 text-xs text-slate-400">
           You&apos;ll paint your weekly availability in this timezone. Students
           see each time converted to their own.
+        </p>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="meetingUrl">
+          Video meeting link <span className="font-normal text-slate-400">(optional)</span>
+        </label>
+        <input
+          id="meetingUrl"
+          className={`${inputClass} mt-1.5`}
+          value={meetingUrl}
+          onChange={(e) => setMeetingUrl(e.target.value)}
+          placeholder="https://zoom.us/j/your-personal-room"
+        />
+        <p className="mt-1 text-xs text-slate-400">
+          Your personal Zoom/Meet/Teams room. Leave blank and we&apos;ll create a
+          unique link for each booking automatically.
         </p>
       </div>
 
