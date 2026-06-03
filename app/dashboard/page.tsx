@@ -12,7 +12,7 @@ import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { focusLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
-import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar-links";
+import { googleCalendarUrl, isJitsiUrl, outlookCalendarUrl } from "@/lib/calendar-links";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
@@ -360,40 +360,47 @@ function SessionActions({
     location: meetingUrl ?? "",
   };
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-3">
-      {meetingUrl && (
-        <a
-          href={meetingUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
-        >
-          <Video className="size-3.5" />
-          Join session
-        </a>
+    <div className="mt-4 border-t border-slate-100 pt-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {meetingUrl && (
+          <a
+            href={meetingUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
+          >
+            <Video className="size-3.5" />
+            Join session
+          </a>
+        )}
+        <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-medium text-slate-500">
+          <span className="text-slate-400">Add to calendar:</span>
+          <a
+            className="text-indigo-600 hover:underline"
+            target="_blank"
+            rel="noreferrer"
+            href={googleCalendarUrl(calInput)}
+          >
+            Google
+          </a>
+          <a
+            className="text-indigo-600 hover:underline"
+            target="_blank"
+            rel="noreferrer"
+            href={outlookCalendarUrl(calInput)}
+          >
+            Outlook
+          </a>
+          <a className="text-indigo-600 hover:underline" href={`/api/bookings/${bookingId}/ics`}>
+            .ics
+          </a>
+        </span>
+      </div>
+      {meetingUrl && isJitsiUrl(meetingUrl) && (
+        <p className="mt-1.5 text-[11px] text-slate-400">
+          Jitsi may ask one person to sign in to start the room.
+        </p>
       )}
-      <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-medium text-slate-500">
-        <span className="text-slate-400">Add to calendar:</span>
-        <a
-          className="text-indigo-600 hover:underline"
-          target="_blank"
-          rel="noreferrer"
-          href={googleCalendarUrl(calInput)}
-        >
-          Google
-        </a>
-        <a
-          className="text-indigo-600 hover:underline"
-          target="_blank"
-          rel="noreferrer"
-          href={outlookCalendarUrl(calInput)}
-        >
-          Outlook
-        </a>
-        <a className="text-indigo-600 hover:underline" href={`/api/bookings/${bookingId}/ics`}>
-          .ics
-        </a>
-      </span>
     </div>
   );
 }

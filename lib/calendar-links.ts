@@ -31,6 +31,12 @@ export function googleCalendarUrl(i: CalendarLinkInput): string {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+// True when a meeting link is an auto-generated Jitsi room — those need one
+// participant to sign in (with Google) to start the room, so we surface a hint.
+export function isJitsiUrl(url: string | null | undefined): boolean {
+  return !!url && url.toLowerCase().includes("jit.si/");
+}
+
 export function outlookCalendarUrl(i: CalendarLinkInput): string {
   const end = new Date(i.start.getTime() + i.durationMins * 60_000);
   const params = new URLSearchParams({

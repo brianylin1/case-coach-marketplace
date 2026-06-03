@@ -3,6 +3,7 @@
 // escaping, all handled here. Event times are emitted in UTC (Z), so every
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
 import { focusLabel } from "@/lib/constants";
+import { isJitsiUrl } from "@/lib/calendar-links";
 
 const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@casecoach.app";
 
@@ -131,8 +132,11 @@ export function buildBookingEvent(input: {
     description:
       `Your CaseCoach 1:1 case-interview session.\n` +
       `Focus: ${focus}\n` +
-      `Join: ${input.meetingUrl}\n\n` +
-      `Student: ${input.studentName}\n` +
+      `Join: ${input.meetingUrl}\n` +
+      (isJitsiUrl(input.meetingUrl)
+        ? `If prompted, sign in with Google to start the room.\n`
+        : ``) +
+      `\nStudent: ${input.studentName}\n` +
       `Coach: ${input.coachName}\n\n` +
       `Booked via CaseCoach.`,
     location: input.meetingUrl,

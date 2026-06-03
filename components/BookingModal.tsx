@@ -15,7 +15,7 @@ import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { formatRate } from "@/lib/format";
-import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar-links";
+import { googleCalendarUrl, isJitsiUrl, outlookCalendarUrl } from "@/lib/calendar-links";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
 
@@ -216,7 +216,9 @@ export function BookingModal({
             </div>
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            ✉️ Calendar invite on its way to you and {result.coach.name.split(" ")[0]}.
+            Calendar invite created. Your session room is ready.
+            {isJitsiUrl(result.meetingUrl) &&
+              " One participant may need to sign in with Google to start the Jitsi room."}
           </p>
 
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">

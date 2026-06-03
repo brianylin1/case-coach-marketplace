@@ -5,6 +5,7 @@
 // Server-only.
 import { Resend } from "resend";
 import { focusLabel } from "@/lib/constants";
+import { isJitsiUrl } from "@/lib/calendar-links";
 import { formatRate, formatSlotParts } from "@/lib/format";
 import { shortOffsetLabel } from "@/lib/timezone";
 
@@ -51,6 +52,9 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
   const studentWhen = whenLabel(input.start, input.studentTimezone);
   const coachWhen = whenLabel(input.start, input.coach.timezone);
   const join = `<a href="${input.meetingUrl}">${input.meetingUrl}</a>`;
+  const jitsiNote = isJitsiUrl(input.meetingUrl)
+    ? `<em style="color:#64748b">If prompted, sign in with Google to start the room.</em>`
+    : null;
 
   const studentSubject = `Your CaseCoach session with ${input.coach.name} — ${formatSlotParts(input.start, input.studentTimezone).dateLabel}`;
   const studentHtml = shell(
@@ -59,6 +63,7 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
       `<strong>When:</strong> ${studentWhen}`,
       `<strong>Focus:</strong> ${focus}`,
       `<strong>Join:</strong> ${join}`,
+      ...(jitsiNote ? [jitsiNote] : []),
       `<strong>Coach contact:</strong> ${input.coach.email}`,
       `<strong>Paid:</strong> ${formatRate(input.pricePaid)} · simulated`,
     ],
@@ -72,6 +77,7 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
       `<strong>When:</strong> ${coachWhen}`,
       `<strong>Focus:</strong> ${focus}`,
       `<strong>Join:</strong> ${join}`,
+      ...(jitsiNote ? [jitsiNote] : []),
       `<strong>Student contact:</strong> ${input.student.email}`,
     ],
     { href: input.meetingUrl, label: "Join the session" },
