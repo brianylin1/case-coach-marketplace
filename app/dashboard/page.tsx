@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarClock, Inbox, Mail, Search } from "lucide-react";
+import { CalendarClock, Inbox, Mail, Search, Video } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { Avatar } from "@/components/Avatar";
@@ -12,6 +12,7 @@ import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { focusLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
+import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar-links";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
@@ -108,7 +109,14 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                         </>
                       )}
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                    <SessionActions
+                      bookingId={b.id}
+                      meetingUrl={b.meetingUrl}
+                      title={`CaseCoach: case session with ${b.coach.name}`}
+                      start={b.startTime}
+                      durationMins={b.durationMins}
+                    />
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                       <a
                         href={`mailto:${b.coach.email}`}
                         className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
@@ -272,7 +280,14 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                     <CalendarClock className="size-4 text-slate-400" />
                     {when.dateLabel} · {when.timeLabel}
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                  <SessionActions
+                    bookingId={b.id}
+                    meetingUrl={b.meetingUrl}
+                    title={`CaseCoach: case session with ${b.student.name}`}
+                    start={b.startTime}
+                    durationMins={b.durationMins}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <a
                       href={`mailto:${b.student.email}`}
                       className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
@@ -315,6 +330,70 @@ function Shell({
         {action}
       </div>
       {children}
+    </div>
+  );
+}
+
+// Join link + "Add to calendar" actions for a booked session. Reuses the
+// shared calendar-link builders and the /api/bookings/[id]/ics download. Join
+// only renders when the booking has a meeting link.
+function SessionActions({
+  bookingId,
+  meetingUrl,
+  title,
+  start,
+  durationMins,
+}: {
+  bookingId: number;
+  meetingUrl: string | null;
+  title: string;
+  start: Date;
+  durationMins: number;
+}) {
+  const calInput = {
+    title,
+    start,
+    durationMins,
+    description: meetingUrl
+      ? `Your CaseCoach 1:1 session. Join: ${meetingUrl}`
+      : "Your CaseCoach 1:1 session.",
+    location: meetingUrl ?? "",
+  };
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-3">
+      {meetingUrl && (
+        <a
+          href={meetingUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
+        >
+          <Video className="size-3.5" />
+          Join session
+        </a>
+      )}
+      <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-medium text-slate-500">
+        <span className="text-slate-400">Add to calendar:</span>
+        <a
+          className="text-indigo-600 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+          href={googleCalendarUrl(calInput)}
+        >
+          Google
+        </a>
+        <a
+          className="text-indigo-600 hover:underline"
+          target="_blank"
+          rel="noreferrer"
+          href={outlookCalendarUrl(calInput)}
+        >
+          Outlook
+        </a>
+        <a className="text-indigo-600 hover:underline" href={`/api/bookings/${bookingId}/ics`}>
+          .ics
+        </a>
+      </span>
     </div>
   );
 }
