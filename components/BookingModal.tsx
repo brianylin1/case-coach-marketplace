@@ -9,20 +9,19 @@ import {
   CreditCard,
   Mail,
   ShieldCheck,
-  Video,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
+import { MeetingActions, type BookingMeetingView } from "./MeetingActions";
 import { formatRate } from "@/lib/format";
-import { googleCalendarUrl, isJitsiUrl, outlookCalendarUrl } from "@/lib/calendar-links";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
 
 type BookedResult = {
   id: number;
   pricePaid: number;
-  meetingUrl: string;
+  meeting: BookingMeetingView;
   coach: { name: string; email: string; firm: string; title: string };
 };
 
@@ -158,7 +157,7 @@ export function BookingModal({
       {slot && result && (
         <div className="p-6 text-center">
           <CheckCircle2 className="mx-auto size-12 text-emerald-500" />
-          <h2 className="mt-3 text-xl font-bold text-slate-900">You&apos;re booked!</h2>
+          <h2 className="mt-3 text-xl font-bold text-slate-900">Session confirmed</h2>
           <p className="mt-1 text-sm text-slate-600">
             Your session with {result.coach.name} is confirmed.
           </p>
@@ -167,58 +166,17 @@ export function BookingModal({
             {slot.dateLabel} · {slot.timeLabel}
           </p>
 
-          <div className="mt-4 rounded-xl border border-slate-200 p-3 text-left">
-            <a
-              href={result.meetingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={`${btnPrimary} w-full`}
-            >
-              <Video className="size-4" />
-              Join the session
-            </a>
-            <p className="mt-2 truncate text-center text-xs text-slate-400">
-              {result.meetingUrl}
-            </p>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium">
-              <span className="text-slate-400">Add to calendar:</span>
-              <a
-                className="text-indigo-600 hover:underline"
-                target="_blank"
-                rel="noreferrer"
-                href={googleCalendarUrl({
-                  title: `CaseCoach: case session with ${result.coach.name}`,
-                  start: new Date(slot.startISO),
-                  durationMins: slot.durationMins,
-                  description: `Your CaseCoach 1:1 session. Join: ${result.meetingUrl}`,
-                  location: result.meetingUrl,
-                })}
-              >
-                Google
-              </a>
-              <a
-                className="text-indigo-600 hover:underline"
-                target="_blank"
-                rel="noreferrer"
-                href={outlookCalendarUrl({
-                  title: `CaseCoach: case session with ${result.coach.name}`,
-                  start: new Date(slot.startISO),
-                  durationMins: slot.durationMins,
-                  description: `Your CaseCoach 1:1 session. Join: ${result.meetingUrl}`,
-                  location: result.meetingUrl,
-                })}
-              >
-                Outlook
-              </a>
-              <a className="text-indigo-600 hover:underline" href={`/api/bookings/${result.id}/ics`}>
-                .ics
-              </a>
-            </div>
+          <div className="mt-4 rounded-xl border border-slate-200 p-4 text-left">
+            <MeetingActions
+              bookingId={result.id}
+              title={`CaseCoach: case session with ${result.coach.name}`}
+              start={new Date(slot.startISO)}
+              durationMins={slot.durationMins}
+              meeting={result.meeting}
+            />
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Calendar invite created. Your session room is ready.
-            {isJitsiUrl(result.meetingUrl) &&
-              " One participant may need to sign in with Google to start the Jitsi room."}
+            A calendar invite has been generated and sent.
           </p>
 
           <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">

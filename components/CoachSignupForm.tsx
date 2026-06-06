@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
-import { FIRMS, FOCUS_AREAS } from "@/lib/constants";
+import { FIRMS, FOCUS_AREAS, MEETING_PLATFORMS } from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
@@ -21,7 +21,11 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
   const [hourlyRate, setHourlyRate] = useState("");
   const [availability, setAvailability] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [meetingPlatform, setMeetingPlatform] = useState("");
   const [meetingUrl, setMeetingUrl] = useState("");
+  const [meetingId, setMeetingId] = useState("");
+  const [meetingPasscode, setMeetingPasscode] = useState("");
+  const [meetingInstructions, setMeetingInstructions] = useState("");
   const [timezone, setTimezone] = useState(defaultTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,6 +39,10 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (!meetingPlatform || !/^https?:\/\/\S+/i.test(meetingUrl.trim())) {
+      setError("Add your meeting platform and a valid meeting URL — students need it to join your sessions.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/coaches", {
@@ -52,7 +60,11 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          meetingPlatform,
           meetingUrl,
+          meetingId,
+          meetingPasscode,
+          meetingInstructions,
           timezone,
         }),
       });
@@ -246,23 +258,6 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
       </div>
 
       <div>
-        <label className={labelClass} htmlFor="meetingUrl">
-          Video meeting link <span className="font-normal text-slate-400">(optional)</span>
-        </label>
-        <input
-          id="meetingUrl"
-          className={`${inputClass} mt-1.5`}
-          value={meetingUrl}
-          onChange={(e) => setMeetingUrl(e.target.value)}
-          placeholder="https://zoom.us/j/your-personal-room"
-        />
-        <p className="mt-1 text-xs text-slate-400">
-          Your personal Zoom/Meet/Teams room. Leave blank and we&apos;ll create a
-          unique link for each booking automatically.
-        </p>
-      </div>
-
-      <div>
         <label className={labelClass} htmlFor="linkedin">
           LinkedIn URL <span className="font-normal text-slate-400">(optional, builds trust)</span>
         </label>
@@ -273,6 +268,92 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           onChange={(e) => setLinkedinUrl(e.target.value)}
           placeholder="https://www.linkedin.com/in/…"
         />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">Meeting Information</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Students will use this information to join sessions you host through
+          CaseCoach. Paste your permanent Teams, Zoom, or Google Meet room. If
+          this is not configured, students cannot book you.
+        </p>
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="meetingPlatform">
+                Meeting platform <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="meetingPlatform"
+                className={`${inputClass} mt-1.5`}
+                value={meetingPlatform}
+                onChange={(e) => setMeetingPlatform(e.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                {MEETING_PLATFORMS.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="meetingId">
+                Meeting ID <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="meetingId"
+                className={`${inputClass} mt-1.5`}
+                value={meetingId}
+                onChange={(e) => setMeetingId(e.target.value)}
+                placeholder="123 456 789"
+              />
+            </div>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingUrl">
+              Meeting URL <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="meetingUrl"
+              className={`${inputClass} mt-1.5`}
+              value={meetingUrl}
+              onChange={(e) => setMeetingUrl(e.target.value)}
+              placeholder="https://teams.microsoft.com/l/meetup-join/…"
+              required
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingPasscode">
+              Passcode / password{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input
+              id="meetingPasscode"
+              className={`${inputClass} mt-1.5`}
+              value={meetingPasscode}
+              onChange={(e) => setMeetingPasscode(e.target.value)}
+              placeholder="ABC123"
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingInstructions">
+              Additional joining instructions{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              id="meetingInstructions"
+              rows={2}
+              className={`${inputClass} mt-1.5`}
+              value={meetingInstructions}
+              onChange={(e) => setMeetingInstructions(e.target.value)}
+              placeholder="e.g. I'll admit you from the lobby at the start time."
+            />
+          </div>
+        </div>
       </div>
 
       {error && (

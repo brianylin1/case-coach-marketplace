@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarClock, Inbox, Mail, Search, Video } from "lucide-react";
+import { CalendarClock, Inbox, Mail, Search } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { Avatar } from "@/components/Avatar";
@@ -9,10 +9,10 @@ import { FirmBadge } from "@/components/FirmBadge";
 import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AvailabilityGrid } from "@/components/AvailabilityGrid";
-import { focusLabel } from "@/lib/constants";
+import { MeetingActions } from "@/components/MeetingActions";
+import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
-import { googleCalendarUrl, isJitsiUrl, outlookCalendarUrl } from "@/lib/calendar-links";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
@@ -109,13 +109,21 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                         </>
                       )}
                     </div>
-                    <SessionActions
-                      bookingId={b.id}
-                      meetingUrl={b.meetingUrl}
-                      title={`CaseCoach: case session with ${b.coach.name}`}
-                      start={b.startTime}
-                      durationMins={b.durationMins}
-                    />
+                    <div className="mt-4 border-t border-slate-100 pt-3">
+                      <MeetingActions
+                        bookingId={b.id}
+                        title={`CaseCoach: case session with ${b.coach.name}`}
+                        start={b.startTime}
+                        durationMins={b.durationMins}
+                        meeting={{
+                          platform: b.meetingPlatform,
+                          url: b.meetingUrl,
+                          id: b.meetingId,
+                          passcode: b.meetingPasscode,
+                          instructions: b.meetingInstructions,
+                        }}
+                      />
+                    </div>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                       <a
                         href={`mailto:${b.coach.email}`}
@@ -193,6 +201,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
   const initialCellKeys = blocksToCellKeys(coach.blocks);
   const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
+  const hasMeetingInfo = Boolean(coach.meetingUrl && coach.meetingPlatform);
 
   return (
     <Shell
@@ -204,6 +213,16 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
         </Link>
       }
     >
+      {!hasMeetingInfo && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-amber-900">
+            ⚠️ Students cannot book you until you configure your meeting room.
+          </p>
+          <Link href="/signup/coach" className={`${btnPrimary} shrink-0`}>
+            Configure Meeting Room
+          </Link>
+        </div>
+      )}
       <div className="mb-6 grid grid-cols-3 gap-4">
         <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
         <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
@@ -229,12 +248,26 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
             <Field label="Meeting room">
-              {coach.meetingUrl ? (
-                <span className="break-all text-slate-700">{coach.meetingUrl}</span>
+              {hasMeetingInfo ? (
+                <div className="space-y-0.5">
+                  <div className="text-slate-700">{meetingPlatformLabel(coach.meetingPlatform)}</div>
+                  <a
+                    href={coach.meetingUrl ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block break-all text-indigo-600 hover:underline"
+                  >
+                    {coach.meetingUrl}
+                  </a>
+                  {coach.meetingId && (
+                    <div className="text-xs text-slate-500">ID {coach.meetingId}</div>
+                  )}
+                  {coach.meetingPasscode && (
+                    <div className="text-xs text-slate-500">Passcode {coach.meetingPasscode}</div>
+                  )}
+                </div>
               ) : (
-                <span className="text-slate-400">
-                  Auto · a unique link is created per booking
-                </span>
+                <span className="font-medium text-amber-700">⚠ Not configured</span>
               )}
             </Field>
             <Field label="Coaches on">
@@ -280,13 +313,21 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                     <CalendarClock className="size-4 text-slate-400" />
                     {when.dateLabel} · {when.timeLabel}
                   </p>
-                  <SessionActions
-                    bookingId={b.id}
-                    meetingUrl={b.meetingUrl}
-                    title={`CaseCoach: case session with ${b.student.name}`}
-                    start={b.startTime}
-                    durationMins={b.durationMins}
-                  />
+                  <div className="mt-4 border-t border-slate-100 pt-3">
+                    <MeetingActions
+                      bookingId={b.id}
+                      title={`CaseCoach: case session with ${b.student.name}`}
+                      start={b.startTime}
+                      durationMins={b.durationMins}
+                      meeting={{
+                        platform: b.meetingPlatform,
+                        url: b.meetingUrl,
+                        id: b.meetingId,
+                        passcode: b.meetingPasscode,
+                        instructions: b.meetingInstructions,
+                      }}
+                    />
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <a
                       href={`mailto:${b.student.email}`}
@@ -330,77 +371,6 @@ function Shell({
         {action}
       </div>
       {children}
-    </div>
-  );
-}
-
-// Join link + "Add to calendar" actions for a booked session. Reuses the
-// shared calendar-link builders and the /api/bookings/[id]/ics download. Join
-// only renders when the booking has a meeting link.
-function SessionActions({
-  bookingId,
-  meetingUrl,
-  title,
-  start,
-  durationMins,
-}: {
-  bookingId: number;
-  meetingUrl: string | null;
-  title: string;
-  start: Date;
-  durationMins: number;
-}) {
-  const calInput = {
-    title,
-    start,
-    durationMins,
-    description: meetingUrl
-      ? `Your CaseCoach 1:1 session. Join: ${meetingUrl}`
-      : "Your CaseCoach 1:1 session.",
-    location: meetingUrl ?? "",
-  };
-  return (
-    <div className="mt-4 border-t border-slate-100 pt-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {meetingUrl && (
-          <a
-            href={meetingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500"
-          >
-            <Video className="size-3.5" />
-            Join session
-          </a>
-        )}
-        <span className="inline-flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs font-medium text-slate-500">
-          <span className="text-slate-400">Add to calendar:</span>
-          <a
-            className="text-indigo-600 hover:underline"
-            target="_blank"
-            rel="noreferrer"
-            href={googleCalendarUrl(calInput)}
-          >
-            Google
-          </a>
-          <a
-            className="text-indigo-600 hover:underline"
-            target="_blank"
-            rel="noreferrer"
-            href={outlookCalendarUrl(calInput)}
-          >
-            Outlook
-          </a>
-          <a className="text-indigo-600 hover:underline" href={`/api/bookings/${bookingId}/ics`}>
-            .ics
-          </a>
-        </span>
-      </div>
-      {meetingUrl && isJitsiUrl(meetingUrl) && (
-        <p className="mt-1.5 text-[11px] text-slate-400">
-          Jitsi may ask one person to sign in to start the room.
-        </p>
-      )}
     </div>
   );
 }

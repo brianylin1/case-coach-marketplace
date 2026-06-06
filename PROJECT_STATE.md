@@ -104,8 +104,10 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 - **Coach onboarding** (`/signup/coach`): name, email, firm, title, years,
   headline, bio, focus areas, rate (or pro bono), availability text, **timezone**
-  (defaults to the browser-detected IANA zone), LinkedIn. Passwordless; upsert by
-  email.
+  (defaults to the browser-detected IANA zone), LinkedIn, and a **required
+  "Meeting Information"** section (platform + URL, optional ID / passcode /
+  instructions). Passwordless; upsert by email. **A coach is not bookable — and
+  their availability is hidden — until a meeting room is configured.**
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
   (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
   click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
@@ -121,12 +123,14 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Booking flow:** click a time → coach modal → review + **simulated payment**
   → confirmation reveals coach contact. `POST /api/bookings { coachId, startTime }`
   validates the time is inside the coach's blocks and not taken; unique constraint
-  guards double-booking. On success it resolves a **meeting link** (the coach's
-  `meetingUrl`, else a unique auto-generated Jitsi room), then (via `after()`)
-  **emails both parties a calendar invite** (`.ics`) with times in each
-  recipient's zone — Resend, simulated unless production (see PR #4). The
-  confirmation modal shows the join link + Google/Outlook/`.ics` "Add to calendar"
-  buttons; `GET /api/bookings/[id]/ics` serves the invite to either party.
+  guards double-booking, and the coach must have a configured meeting room. On
+  success it **snapshots the coach's meeting details** (platform / URL / ID /
+  passcode / instructions) onto the booking, then (via `after()`) **emails both
+  parties a calendar invite** (`.ics`) with times in each recipient's zone —
+  Resend, simulated unless production (see PR #5). The confirmation modal,
+  dashboards, emails, and `.ics` all surface platform / URL / ID / passcode +
+  Join + Google/Outlook/`.ics`; `GET /api/bookings/[id]/ics` serves the invite to
+  either party.
 - **Dashboards:** student = upcoming booked sessions + coach contact + profile
   summary; coach = availability grid + booked sessions (with student contact) +
   stats (hrs/week, upcoming, booked value).
@@ -180,21 +184,26 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   UTC-default coaches keep their current behavior until they pick a zone. Manual
   QA in `docs/timezone-qa.md`.
 
-- **PR #4 — "Booking calendar invites + email"** *(in progress, branch
-  `claude/booking-calendar-invites`, stacked on PR #3).* Booking now auto-creates
-  a calendar event and emails both parties. New `lib/ics.ts` (zero-dep RFC 5545
-  builder: UTC times, line-folding, `METHOD:REQUEST`, organizer/attendees, 1h
-  alarm), `lib/email.ts` (Resend behind a `lib/payments.ts`-style shim; **real
-  sends only in production**, simulated otherwise so the shared-DB preview never
-  emails real people), and `lib/calendar-links.ts` (Google/Outlook web links).
-  Every booking gets a usable join link — the coach's `meetingUrl` or a unique
-  auto-generated Jitsi room — snapshotted on the booking. Emails go out via
-  `after()` (non-blocking; a mail failure never fails a paid booking) with times
-  in each recipient's zone; `Booking.emailStatus` tracks the result. Added
-  `GET /api/bookings/[id]/ics` (authorized download), confirmation-modal join
-  link + "Add to calendar" buttons, and a coach-signup `meetingUrl` field.
-  Additive schema only (`Coach.meetingUrl`, `Booking.meetingUrl` + `emailStatus`).
-  No Google/Microsoft OAuth, no free/busy, no reschedule/cancel (future).
+- **PR #4 — "Booking calendar invites + email" (Jitsi fallback)** — *closed,
+  superseded by PR #5.* Introduced the calendar/email/ICS plumbing but auto-
+  generated a Jitsi room when a coach had none; Jitsi rooms didn't reliably start
+  (moderator sign-in), so the auto-video approach was dropped.
+
+- **PR #5 — "Coach-provided meeting rooms (no auto video)"** *(in progress,
+  branch `claude/coach-meeting-rooms`).* Keeps PR #4's calendar/email/ICS
+  plumbing (`lib/ics.ts` RFC 5545 builder, `lib/email.ts` Resend shim — real
+  sends only in production, `lib/calendar-links.ts`) but **removes Jitsi and all
+  auto video**. Coaches now provide their own room in a required "Meeting
+  Information" section (platform + URL, optional ID / passcode / instructions);
+  **a coach without one is not bookable and is filtered from `/sessions`, the
+  cell API, and their public page.** Booking snapshots the coach's meeting
+  details onto the `Booking`; the confirmation modal, both dashboards, emails,
+  and the `.ics` (LOCATION + DESCRIPTION) all show platform / URL / ID / passcode
+  + a Join button + Google/Outlook/`.ics`. New shared `components/MeetingActions`.
+  Additive schema only (`meetingPlatform / meetingId / meetingPasscode /
+  meetingInstructions` on both `Coach` and `Booking`; `meetingUrl` already
+  existed). Existing coaches with no room become unbookable until they configure
+  one. No Google/Microsoft/Zoom/Daily/Whereby integration.
 
 ---
 

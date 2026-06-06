@@ -17,6 +17,10 @@ const coaches = [
     availability: "Weeknights & Sunday mornings (ET)",
     linkedinUrl: "https://www.linkedin.com/in/example-maya",
     timezone: "America/New_York",
+    meetingPlatform: "teams",
+    meetingUrl: "https://teams.microsoft.com/l/meetup-join/maya-chen-casecoach",
+    meetingId: "412 555 0184",
+    meetingPasscode: "Case2026",
     // [weekday (0=Mon), startHour, endHour] — wall-clock in the coach's timezone.
     blocks: [[0, 18, 21], [2, 18, 21], [6, 9, 12]],
   },
@@ -33,7 +37,10 @@ const coaches = [
     availability: "Weekday mornings (London)",
     linkedinUrl: null,
     timezone: "Europe/London",
+    meetingPlatform: "zoom",
     meetingUrl: "https://zoom.us/j/5559876543",
+    meetingId: "871 2345 6789",
+    meetingPasscode: "bain123",
     blocks: [[0, 8, 11], [2, 8, 11], [4, 8, 11]],
   },
   {
@@ -49,6 +56,8 @@ const coaches = [
     availability: "Thursday evenings & Saturdays (IST)",
     linkedinUrl: "https://www.linkedin.com/in/example-priya",
     timezone: "Asia/Kolkata",
+    meetingPlatform: "meet",
+    meetingUrl: "https://meet.google.com/pri-yana-bcg",
     blocks: [[3, 17, 20], [5, 9, 13]],
   },
   {
@@ -64,6 +73,8 @@ const coaches = [
     availability: "Tue/Thu evenings & Sunday afternoons (PT)",
     linkedinUrl: null,
     timezone: "America/Los_Angeles",
+    meetingPlatform: "meet",
+    meetingUrl: "https://meet.google.com/liam-walsh-mck",
     blocks: [[1, 19, 22], [3, 19, 22], [6, 14, 17]],
   },
   {
@@ -79,6 +90,7 @@ const coaches = [
     availability: "Tuesday evenings & Sunday mornings (CET)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
     timezone: "Europe/Paris",
+    meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/abc-defg-hij",
     blocks: [[1, 18, 20], [6, 9, 12]],
   },
@@ -95,6 +107,9 @@ const coaches = [
     availability: "Mon/Wed/Fri midday (SGT)",
     linkedinUrl: null,
     timezone: "Asia/Singapore",
+    meetingPlatform: "zoom",
+    meetingUrl: "https://zoom.us/j/5550112233",
+    meetingPasscode: "bcg2026",
     blocks: [[0, 12, 15], [2, 12, 15], [4, 12, 15]],
   },
   {
@@ -110,6 +125,9 @@ const coaches = [
     availability: "Weekend mornings (CT)",
     linkedinUrl: "https://www.linkedin.com/in/example-amara",
     timezone: "America/Chicago",
+    meetingPlatform: "teams",
+    meetingUrl: "https://teams.microsoft.com/l/meetup-join/amara-diallo-casecoach",
+    meetingId: "550 192 7731",
     blocks: [[5, 10, 13], [6, 10, 13]],
   },
   {
@@ -213,6 +231,11 @@ async function main() {
           paymentStatus: "SIMULATED",
           paymentRef: "sim_seed_demo",
           status: "CONFIRMED",
+          meetingPlatform: maya.coach.meetingPlatform,
+          meetingUrl: maya.coach.meetingUrl,
+          meetingId: maya.coach.meetingId,
+          meetingPasscode: maya.coach.meetingPasscode,
+          meetingInstructions: maya.coach.meetingInstructions,
         },
       });
       bookingCount = 1;

@@ -4,7 +4,7 @@ import { setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
-import { isFirm, isFocusKey } from "@/lib/constants";
+import { isFirm, isFocusKey, isMeetingPlatform } from "@/lib/constants";
 
 // Create (or update) a coach profile and sign them in. Idempotent on email.
 export async function POST(request: Request) {
@@ -28,10 +28,15 @@ export async function POST(request: Request) {
   const linkedinUrl = str(body.linkedinUrl, 300) || null;
   const timezoneRaw = str(body.timezone, 64);
   const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
-  // Optional personal video room; must be an http(s) URL or it's ignored (a
-  // unique Jitsi room is generated per booking when this is blank).
-  const meetingUrlRaw = str(body.meetingUrl, 300);
+  // Coach-provided meeting room. A coach is bookable only once both a valid
+  // platform and an http(s) URL are set (no auto-generated rooms).
+  const meetingPlatformRaw = str(body.meetingPlatform, 20);
+  const meetingPlatform = isMeetingPlatform(meetingPlatformRaw) ? meetingPlatformRaw : null;
+  const meetingUrlRaw = str(body.meetingUrl, 500);
   const meetingUrl = /^https?:\/\/\S+$/i.test(meetingUrlRaw) ? meetingUrlRaw : null;
+  const meetingId = str(body.meetingId, 80) || null;
+  const meetingPasscode = str(body.meetingPasscode, 80) || null;
+  const meetingInstructions = str(body.meetingInstructions, 500) || null;
 
   if (!name) {
     return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
@@ -64,7 +69,11 @@ export async function POST(request: Request) {
     availability,
     linkedinUrl,
     timezone,
+    meetingPlatform,
     meetingUrl,
+    meetingId,
+    meetingPasscode,
+    meetingInstructions,
     isActive: true,
   };
 

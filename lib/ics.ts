@@ -2,10 +2,18 @@
 // only sharp edges are CRLF line endings, 75-octet line folding, and TEXT
 // escaping, all handled here. Event times are emitted in UTC (Z), so every
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
-import { focusLabel } from "@/lib/constants";
-import { isJitsiUrl } from "@/lib/calendar-links";
+import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
 
 const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@casecoach.app";
+
+// Coach-provided meeting details, snapshotted onto the booking.
+export type BookingMeeting = {
+  platform: string | null;
+  url: string;
+  id: string | null;
+  passcode: string | null;
+  instructions: string | null;
+};
 
 export type IcsAttendee = { name: string; email: string };
 
@@ -121,25 +129,34 @@ export function buildBookingEvent(input: {
   studentName: string;
   studentEmail: string;
   focusArea: string | null;
-  meetingUrl: string;
+  meeting: BookingMeeting;
 }): IcsEvent {
   const focus = input.focusArea ? focusLabel(input.focusArea) : "Case coaching";
+  const m = input.meeting;
+  const description = [
+    `Your CaseCoach 1:1 case-interview session.`,
+    `Focus: ${focus}`,
+    m.platform ? `Platform: ${meetingPlatformLabel(m.platform)}` : null,
+    `Join: ${m.url}`,
+    m.id ? `Meeting ID: ${m.id}` : null,
+    m.passcode ? `Passcode: ${m.passcode}` : null,
+    m.instructions ? `Instructions: ${m.instructions}` : null,
+    ``,
+    `Student: ${input.studentName}`,
+    `Coach: ${input.coachName}`,
+    ``,
+    `Booked via CaseCoach.`,
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+
   return {
     uid: `booking-${input.bookingId}@casecoach.app`,
     start: input.start,
     durationMins: input.durationMins,
     summary: `CaseCoach: case session — ${input.studentName} × ${input.coachName}`,
-    description:
-      `Your CaseCoach 1:1 case-interview session.\n` +
-      `Focus: ${focus}\n` +
-      `Join: ${input.meetingUrl}\n` +
-      (isJitsiUrl(input.meetingUrl)
-        ? `If prompted, sign in with Google to start the room.\n`
-        : ``) +
-      `\nStudent: ${input.studentName}\n` +
-      `Coach: ${input.coachName}\n\n` +
-      `Booked via CaseCoach.`,
-    location: input.meetingUrl,
+    description,
+    location: m.url,
     organizer: { name: "CaseCoach", email: ORGANIZER_EMAIL },
     attendees: [
       { name: input.studentName, email: input.studentEmail },

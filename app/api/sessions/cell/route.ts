@@ -37,7 +37,11 @@ export async function GET(request: Request) {
   const focus = searchParams.get("focus") ?? "";
   const price = searchParams.get("price") ?? "";
 
-  const where: Prisma.CoachWhereInput = { isActive: true };
+  const where: Prisma.CoachWhereInput = {
+    isActive: true,
+    meetingUrl: { not: null },
+    meetingPlatform: { not: null },
+  };
   if (firm && isFirm(firm)) where.firm = firm;
   if (focus && isFocusKey(focus)) where.focusAreas = { contains: `"${focus}"` };
   const bucket = priceBucket(price);

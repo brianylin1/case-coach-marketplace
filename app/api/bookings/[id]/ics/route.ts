@@ -25,7 +25,15 @@ export async function GET(
     (session.role === "coach" && session.id === booking.coachId);
   if (!authorized) return new Response("Forbidden", { status: 403 });
 
-  const meetingUrl = booking.meetingUrl ?? booking.coach.meetingUrl ?? "";
+  // Prefer the booking's snapshot; fall back to the coach's current room for
+  // any booking made before details were snapshotted.
+  const meeting = {
+    platform: booking.meetingPlatform ?? booking.coach.meetingPlatform,
+    url: booking.meetingUrl ?? booking.coach.meetingUrl ?? "",
+    id: booking.meetingId ?? booking.coach.meetingId,
+    passcode: booking.meetingPasscode ?? booking.coach.meetingPasscode,
+    instructions: booking.meetingInstructions ?? booking.coach.meetingInstructions,
+  };
   const ics = buildIcs(
     buildBookingEvent({
       bookingId: booking.id,
@@ -36,7 +44,7 @@ export async function GET(
       studentName: booking.student.name,
       studentEmail: booking.student.email,
       focusArea: booking.focusArea,
-      meetingUrl,
+      meeting,
     }),
   );
 

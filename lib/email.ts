@@ -4,10 +4,10 @@
 // people. EMAIL_FORCE_SEND=1 overrides for deliberate local testing.
 // Server-only.
 import { Resend } from "resend";
-import { focusLabel } from "@/lib/constants";
-import { isJitsiUrl } from "@/lib/calendar-links";
+import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
 import { formatRate, formatSlotParts } from "@/lib/format";
 import { shortOffsetLabel } from "@/lib/timezone";
+import type { BookingMeeting } from "@/lib/ics";
 
 const FROM = process.env.EMAIL_FROM ?? "CaseCoach <bookings@casecoach.app>";
 
@@ -22,9 +22,18 @@ export type BookingEmailInput = {
   studentTimezone: string; // viewer zone captured at booking time (cc_tz cookie)
   focusArea: string | null;
   pricePaid: number;
-  meetingUrl: string;
+  meeting: BookingMeeting;
   ics: string; // the invite, attached to both emails
 };
+
+// Coach-provided meeting fields are free text — escape before embedding in HTML.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function liveSendEnabled(): boolean {
   if (!process.env.RESEND_API_KEY) return false;
@@ -51,10 +60,14 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
   const focus = input.focusArea ? focusLabel(input.focusArea) : "Case coaching";
   const studentWhen = whenLabel(input.start, input.studentTimezone);
   const coachWhen = whenLabel(input.start, input.coach.timezone);
-  const join = `<a href="${input.meetingUrl}">${input.meetingUrl}</a>`;
-  const jitsiNote = isJitsiUrl(input.meetingUrl)
-    ? `<em style="color:#64748b">If prompted, sign in with Google to start the room.</em>`
-    : null;
+  const m = input.meeting;
+  const meetingRows = [
+    `<strong>Platform:</strong> ${escapeHtml(meetingPlatformLabel(m.platform))}`,
+    `<strong>Meeting URL:</strong> <a href="${escapeHtml(m.url)}">${escapeHtml(m.url)}</a>`,
+    ...(m.id ? [`<strong>Meeting ID:</strong> ${escapeHtml(m.id)}`] : []),
+    ...(m.passcode ? [`<strong>Passcode:</strong> ${escapeHtml(m.passcode)}`] : []),
+    ...(m.instructions ? [`<strong>Instructions:</strong> ${escapeHtml(m.instructions)}`] : []),
+  ];
 
   const studentSubject = `Your CaseCoach session with ${input.coach.name} — ${formatSlotParts(input.start, input.studentTimezone).dateLabel}`;
   const studentHtml = shell(
@@ -62,12 +75,11 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
     [
       `<strong>When:</strong> ${studentWhen}`,
       `<strong>Focus:</strong> ${focus}`,
-      `<strong>Join:</strong> ${join}`,
-      ...(jitsiNote ? [jitsiNote] : []),
+      ...meetingRows,
       `<strong>Coach contact:</strong> ${input.coach.email}`,
       `<strong>Paid:</strong> ${formatRate(input.pricePaid)} · simulated`,
     ],
-    { href: input.meetingUrl, label: "Join the session" },
+    { href: m.url, label: "Join the session" },
   );
 
   const coachSubject = `New booking: ${input.student.name} — ${formatSlotParts(input.start, input.coach.timezone).dateLabel}`;
@@ -76,11 +88,10 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
     [
       `<strong>When:</strong> ${coachWhen}`,
       `<strong>Focus:</strong> ${focus}`,
-      `<strong>Join:</strong> ${join}`,
-      ...(jitsiNote ? [jitsiNote] : []),
+      ...meetingRows,
       `<strong>Student contact:</strong> ${input.student.email}`,
     ],
-    { href: input.meetingUrl, label: "Join the session" },
+    { href: m.url, label: "Join the session" },
   );
 
   const attachments = [
@@ -89,7 +100,7 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
 
   if (!liveSendEnabled()) {
     console.log(
-      `[email:SIMULATED] booking ${input.bookingId}: -> ${input.student.email} (${studentWhen}) & ${input.coach.email} (${coachWhen}); join ${input.meetingUrl}`,
+      `[email:SIMULATED] booking ${input.bookingId}: -> ${input.student.email} (${studentWhen}) & ${input.coach.email} (${coachWhen}); join ${m.url}`,
     );
     return "SIMULATED";
   }

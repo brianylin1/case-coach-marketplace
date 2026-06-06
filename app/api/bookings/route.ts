@@ -1,5 +1,4 @@
 import { NextResponse, after } from "next/server";
-import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
@@ -85,12 +84,22 @@ export async function POST(request: Request) {
     );
   }
 
-  // Every booking gets a usable join link: the coach's own room if set, else a
-  // unique auto-generated Jitsi room. Snapshotted onto the booking so the email
-  // and the .ics download always reference the same link.
-  const meetingUrl =
-    coach.meetingUrl?.trim() ||
-    `https://meet.jit.si/CaseCoach-${randomBytes(6).toString("hex")}`;
+  // Coaches must provide their own meeting room; a coach without one isn't
+  // bookable. Snapshot the details onto the booking so the email, .ics, and
+  // dashboards stay consistent even if the coach later edits their room.
+  if (!coach.meetingUrl || !coach.meetingPlatform) {
+    return NextResponse.json(
+      { error: "This coach hasn't finished setting up their meeting room yet." },
+      { status: 409 },
+    );
+  }
+  const meeting = {
+    platform: coach.meetingPlatform,
+    url: coach.meetingUrl,
+    id: coach.meetingId,
+    passcode: coach.meetingPasscode,
+    instructions: coach.meetingInstructions,
+  };
 
   const amount = coach.hourlyRate;
   const payment = await processPayment({
@@ -115,7 +124,11 @@ export async function POST(request: Request) {
           paymentStatus: payment.status,
           paymentRef: payment.reference,
           status: "CONFIRMED",
-          meetingUrl,
+          meetingPlatform: meeting.platform,
+          meetingUrl: meeting.url,
+          meetingId: meeting.id,
+          meetingPasscode: meeting.passcode,
+          meetingInstructions: meeting.instructions,
         },
       });
     });
@@ -136,7 +149,7 @@ export async function POST(request: Request) {
             studentName: student.name,
             studentEmail: student.email,
             focusArea,
-            meetingUrl,
+            meeting,
           }),
         );
         const result = await sendBookingEmails({
@@ -148,7 +161,7 @@ export async function POST(request: Request) {
           studentTimezone,
           focusArea,
           pricePaid: amount,
-          meetingUrl,
+          meeting,
           ics,
         });
         await prisma.booking.update({
@@ -167,7 +180,7 @@ export async function POST(request: Request) {
       id: booking.id,
       pricePaid: amount,
       paymentStatus: payment.status,
-      meetingUrl,
+      meeting,
       coach: {
         name: coach.name,
         email: coach.email,
