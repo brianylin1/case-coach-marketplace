@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { setSession } from "@/lib/session";
+import { getSession, setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
-import { isFirm, isFocusKey } from "@/lib/constants";
+import { isFirm, isFocusKey, isMeetingPlatform } from "@/lib/constants";
 
 // Create (or update) a coach profile and sign them in. Idempotent on email.
 export async function POST(request: Request) {
@@ -28,6 +28,15 @@ export async function POST(request: Request) {
   const linkedinUrl = str(body.linkedinUrl, 300) || null;
   const timezoneRaw = str(body.timezone, 64);
   const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
+  // Coach-provided meeting room. A coach is bookable only once both a valid
+  // platform and an http(s) URL are set (no auto-generated rooms).
+  const meetingPlatformRaw = str(body.meetingPlatform, 20);
+  const meetingPlatform = isMeetingPlatform(meetingPlatformRaw) ? meetingPlatformRaw : null;
+  const meetingUrlRaw = str(body.meetingUrl, 500);
+  const meetingUrl = /^https?:\/\/\S+$/i.test(meetingUrlRaw) ? meetingUrlRaw : null;
+  const meetingId = str(body.meetingId, 80) || null;
+  const meetingPasscode = str(body.meetingPasscode, 80) || null;
+  const meetingInstructions = str(body.meetingInstructions, 500) || null;
 
   if (!name) {
     return NextResponse.json({ error: "Please enter your name." }, { status: 400 });
@@ -60,14 +69,27 @@ export async function POST(request: Request) {
     availability,
     linkedinUrl,
     timezone,
+    meetingPlatform,
+    meetingUrl,
+    meetingId,
+    meetingPasscode,
+    meetingInstructions,
     isActive: true,
   };
 
-  const coach = await prisma.coach.upsert({
-    where: { email },
-    update: data,
-    create: { email, ...data },
-  });
+  // A logged-in coach is editing their own profile → update by session id so we
+  // never create a duplicate (and keep their existing email). Otherwise it's a
+  // signup: upsert by the unique email.
+  const session = await getSession();
+  const editingId =
+    session?.role === "coach" &&
+    (await prisma.coach.findUnique({ where: { id: session.id }, select: { id: true } }))
+      ? session.id
+      : null;
+
+  const coach = editingId
+    ? await prisma.coach.update({ where: { id: editingId }, data })
+    : await prisma.coach.upsert({ where: { email }, update: data, create: { email, ...data } });
 
   await setSession({ role: "coach", id: coach.id });
   return NextResponse.json({ id: coach.id, role: "coach" });

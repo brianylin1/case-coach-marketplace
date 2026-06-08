@@ -44,7 +44,12 @@ export default async function SessionsPage({
   const now = new Date();
   const { lower, upper } = bookingWindow(now, viewerTz);
 
-  const coachWhere: Prisma.CoachWhereInput = { isActive: true };
+  // Only coaches who've configured a meeting room are bookable / shown.
+  const coachWhere: Prisma.CoachWhereInput = {
+    isActive: true,
+    meetingUrl: { not: null },
+    meetingPlatform: { not: null },
+  };
   if (firm && isFirm(firm)) coachWhere.firm = firm;
   if (focus && isFocusKey(focus)) {
     coachWhere.focusAreas = { contains: `"${focus}"` };

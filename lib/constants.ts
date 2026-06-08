@@ -65,3 +65,25 @@ export type PriceBucketKey = (typeof PRICE_BUCKETS)[number]["key"];
 export function priceBucket(key: string | undefined) {
   return PRICE_BUCKETS.find((b) => b.key === key) ?? PRICE_BUCKETS[0];
 }
+
+// Coaches provide their own meeting room; this is the platform it runs on.
+export const MEETING_PLATFORMS = [
+  { key: "teams", label: "Microsoft Teams" },
+  { key: "zoom", label: "Zoom" },
+  { key: "meet", label: "Google Meet" },
+  { key: "other", label: "Other" },
+] as const;
+
+export type MeetingPlatformKey = (typeof MEETING_PLATFORMS)[number]["key"];
+
+const MEETING_PLATFORM_LABELS: Record<string, string> = Object.fromEntries(
+  MEETING_PLATFORMS.map((p) => [p.key, p.label]),
+);
+
+export function isMeetingPlatform(value: string): boolean {
+  return value in MEETING_PLATFORM_LABELS;
+}
+
+export function meetingPlatformLabel(key: string | null | undefined): string {
+  return (key && MEETING_PLATFORM_LABELS[key]) || "Video call";
+}

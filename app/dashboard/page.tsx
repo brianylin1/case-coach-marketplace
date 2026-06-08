@@ -9,7 +9,8 @@ import { FirmBadge } from "@/components/FirmBadge";
 import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AvailabilityGrid } from "@/components/AvailabilityGrid";
-import { focusLabel } from "@/lib/constants";
+import { MeetingActions } from "@/components/MeetingActions";
+import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
@@ -108,7 +109,23 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                         </>
                       )}
                     </div>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                    <div className="mt-4 border-t border-slate-100 pt-3">
+                      <MeetingActions
+                        variant="student"
+                        bookingId={b.id}
+                        title={`CaseCoach: case session with ${b.coach.name}`}
+                        start={b.startTime}
+                        durationMins={b.durationMins}
+                        meeting={{
+                          platform: b.meetingPlatform,
+                          url: b.meetingUrl,
+                          id: b.meetingId,
+                          passcode: b.meetingPasscode,
+                          instructions: b.meetingInstructions,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                       <a
                         href={`mailto:${b.coach.email}`}
                         className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"
@@ -185,6 +202,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
   const initialCellKeys = blocksToCellKeys(coach.blocks);
   const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
+  const hasMeetingInfo = Boolean(coach.meetingUrl && coach.meetingPlatform);
 
   return (
     <Shell
@@ -196,6 +214,17 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
         </Link>
       }
     >
+      {!hasMeetingInfo && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-amber-900">
+            ⚠️ Add your reusable Teams, Zoom, or Google Meet room before students
+            can book you.
+          </p>
+          <Link href="/signup/coach?section=meeting" className={`${btnPrimary} shrink-0`}>
+            Configure Meeting Room
+          </Link>
+        </div>
+      )}
       <div className="mb-6 grid grid-cols-3 gap-4">
         <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
         <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
@@ -204,7 +233,33 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
+          <div className="relative">
+            <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
+            {!hasMeetingInfo && (
+              // Visual gate only — pointer-events-none lets the coach keep
+              // editing/saving the grid underneath; just the CTA is clickable.
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/60 p-4">
+                <div className="max-w-sm rounded-xl border border-amber-300 bg-white p-4 text-center shadow-lg">
+                  <span className="text-2xl" aria-hidden>
+                    ⚠️
+                  </span>
+                  <p className="mt-1 font-semibold text-slate-900">
+                    Add your meeting room before students can book these times.
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    You can still plan availability, but it will stay hidden from
+                    students until your meeting room is configured.
+                  </p>
+                  <Link
+                    href="/signup/coach?section=meeting"
+                    className={`${btnPrimary} pointer-events-auto mt-3`}
+                  >
+                    Configure Meeting Room
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <aside className={`${cardClass} h-fit p-5`}>
@@ -220,6 +275,33 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
+            <Field label="Reusable coaching room">
+              {hasMeetingInfo ? (
+                <div className="space-y-1">
+                  <div className="text-slate-700">{meetingPlatformLabel(coach.meetingPlatform)}</div>
+                  <a
+                    href={coach.meetingUrl ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block break-all text-indigo-600 hover:underline"
+                  >
+                    {coach.meetingUrl}
+                  </a>
+                  {coach.meetingId && (
+                    <div className="text-xs text-slate-500">ID {coach.meetingId}</div>
+                  )}
+                  {coach.meetingPasscode && (
+                    <div className="text-xs text-slate-500">Passcode {coach.meetingPasscode}</div>
+                  )}
+                  <p className="pt-1 text-xs text-slate-400">
+                    This is your reusable coaching room. It is included in every
+                    booking invite students receive.
+                  </p>
+                </div>
+              ) : (
+                <span className="font-medium text-amber-700">⚠ Not configured</span>
+              )}
+            </Field>
             <Field label="Coaches on">
               <div className="flex flex-wrap gap-1.5">
                 {focus.map((f) => (
@@ -263,7 +345,22 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                     <CalendarClock className="size-4 text-slate-400" />
                     {when.dateLabel} · {when.timeLabel}
                   </p>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-sm">
+                  <div className="mt-4 border-t border-slate-100 pt-3">
+                    <MeetingActions
+                      bookingId={b.id}
+                      title={`CaseCoach: case session with ${b.student.name}`}
+                      start={b.startTime}
+                      durationMins={b.durationMins}
+                      meeting={{
+                        platform: b.meetingPlatform,
+                        url: b.meetingUrl,
+                        id: b.meetingId,
+                        passcode: b.meetingPasscode,
+                        instructions: b.meetingInstructions,
+                      }}
+                    />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
                     <a
                       href={`mailto:${b.student.email}`}
                       className="inline-flex items-center gap-1.5 font-medium text-indigo-600 hover:underline"

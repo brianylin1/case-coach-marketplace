@@ -10,6 +10,7 @@ import { toCoachView, toSessionView } from "@/lib/serialize";
 import { bookingWindow, coachSessionStarts } from "@/lib/availability";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { cardClass } from "@/lib/ui";
+import type { SlotView } from "@/lib/types";
 
 async function getCoach(idParam: string) {
   const id = Number(idParam);
@@ -38,19 +39,23 @@ export default async function CoachPage({
   const coach = await getCoach((await params).id);
   if (!coach || !coach.isActive) notFound();
 
+  // Availability is only shown publicly once the coach has set a meeting room.
+  const bookable = Boolean(coach.meetingUrl && coach.meetingPlatform);
   const now = new Date();
   const viewerTz = await getViewerTimeZone();
-  const { lower, upper } = bookingWindow(now, viewerTz);
-  const bookings = await prisma.booking.findMany({
-    where: { coachId: coach.id, status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
-    select: { startTime: true },
-  });
-  const taken = new Set(bookings.map((b) => new Date(b.startTime).toISOString()));
-
-  const slotViews = coachSessionStarts(coach.blocks, lower, upper, coach.timezone)
-    .filter((s) => !taken.has(s.toISOString()))
-    .slice(0, 24)
-    .map((s) => toSessionView(coach, s, viewerTz));
+  let slotViews: SlotView[] = [];
+  if (bookable) {
+    const { lower, upper } = bookingWindow(now, viewerTz);
+    const bookings = await prisma.booking.findMany({
+      where: { coachId: coach.id, status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
+      select: { startTime: true },
+    });
+    const taken = new Set(bookings.map((b) => new Date(b.startTime).toISOString()));
+    slotViews = coachSessionStarts(coach.blocks, lower, upper, coach.timezone)
+      .filter((s) => !taken.has(s.toISOString()))
+      .slice(0, 24)
+      .map((s) => toSessionView(coach, s, viewerTz));
+  }
 
   const user = await getCurrentUser();
   const isStudent = user?.role === "student";
@@ -73,7 +78,13 @@ export default async function CoachPage({
             Book a session
           </h2>
           <div className="mt-3">
-            <BookableSlotList slots={slotViews} isStudent={Boolean(isStudent)} />
+            {bookable ? (
+              <BookableSlotList slots={slotViews} isStudent={Boolean(isStudent)} />
+            ) : (
+              <p className="text-sm text-slate-500">
+                This coach isn&apos;t accepting bookings yet.
+              </p>
+            )}
           </div>
         </div>
       </div>

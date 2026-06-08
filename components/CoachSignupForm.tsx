@@ -1,29 +1,73 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
-import { FIRMS, FOCUS_AREAS } from "@/lib/constants";
+import { FIRMS, FOCUS_AREAS, MEETING_PLATFORMS } from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
-export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }) {
+export type CoachFormValues = {
+  name: string;
+  email: string;
+  firm: string;
+  title: string;
+  yearsAtFirm: string;
+  headline: string;
+  bio: string;
+  focusAreas: string[];
+  hourlyRate: string;
+  availability: string;
+  linkedinUrl: string;
+  meetingPlatform: string;
+  meetingUrl: string;
+  meetingId: string;
+  meetingPasscode: string;
+  meetingInstructions: string;
+  timezone: string;
+};
+
+export function CoachSignupForm({
+  defaultTimezone,
+  initialValues,
+  editing = false,
+  focusSection,
+}: {
+  defaultTimezone: string;
+  initialValues?: Partial<CoachFormValues>;
+  editing?: boolean;
+  focusSection?: string;
+}) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [firm, setFirm] = useState<string>("");
-  const [title, setTitle] = useState("");
-  const [yearsAtFirm, setYearsAtFirm] = useState("");
-  const [headline, setHeadline] = useState("");
-  const [bio, setBio] = useState("");
-  const [focusAreas, setFocusAreas] = useState<string[]>([]);
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [availability, setAvailability] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [timezone, setTimezone] = useState(defaultTimezone);
+  const iv = initialValues ?? {};
+  const [name, setName] = useState(iv.name ?? "");
+  const [email, setEmail] = useState(iv.email ?? "");
+  const [firm, setFirm] = useState<string>(iv.firm ?? "");
+  const [title, setTitle] = useState(iv.title ?? "");
+  const [yearsAtFirm, setYearsAtFirm] = useState(iv.yearsAtFirm ?? "");
+  const [headline, setHeadline] = useState(iv.headline ?? "");
+  const [bio, setBio] = useState(iv.bio ?? "");
+  const [focusAreas, setFocusAreas] = useState<string[]>(iv.focusAreas ?? []);
+  const [hourlyRate, setHourlyRate] = useState(iv.hourlyRate ?? "");
+  const [availability, setAvailability] = useState(iv.availability ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(iv.linkedinUrl ?? "");
+  const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
+  const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
+  const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
+  const [meetingPasscode, setMeetingPasscode] = useState(iv.meetingPasscode ?? "");
+  const [meetingInstructions, setMeetingInstructions] = useState(iv.meetingInstructions ?? "");
+  const [timezone, setTimezone] = useState(iv.timezone ?? defaultTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Scroll straight to the meeting section when arrived at via Configure Meeting Room.
+  const meetingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focusSection === "meeting") {
+      meetingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusSection]);
 
   function toggleFocus(key: string) {
     setFocusAreas((prev) =>
@@ -34,6 +78,10 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (!meetingPlatform || !/^https?:\/\/\S+/i.test(meetingUrl.trim())) {
+      setError("Add your meeting platform and a valid meeting URL — students need it to join your sessions.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/coaches", {
@@ -51,6 +99,11 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          meetingPlatform,
+          meetingUrl,
+          meetingId,
+          meetingPasscode,
+          meetingInstructions,
           timezone,
         }),
       });
@@ -96,12 +149,16 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           <input
             id="email"
             type="email"
-            className={`${inputClass} mt-1.5`}
+            className={`${inputClass} mt-1.5 ${editing ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
             required
+            readOnly={editing}
           />
+          {editing && (
+            <p className="mt-1 text-xs text-slate-400">Email can&apos;t be changed.</p>
+          )}
         </div>
       </div>
 
@@ -256,6 +313,135 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
         />
       </div>
 
+      <div
+        ref={meetingRef}
+        id="meeting-room"
+        className={`scroll-mt-6 rounded-xl border bg-slate-50/60 p-4 ${
+          focusSection === "meeting"
+            ? "border-indigo-400 ring-2 ring-indigo-200"
+            : "border-slate-200"
+        }`}
+      >
+        <h2 className="text-sm font-semibold text-slate-900">Your reusable coaching room</h2>
+        <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+          <p className="text-sm font-semibold text-indigo-900">Do this once</p>
+          <p className="mt-1 text-sm text-indigo-900/80">
+            Create one reusable Teams, Zoom, or Google Meet room and paste the
+            join link here. CaseCoach will use this same room in every student
+            calendar invite. You do not need to create a new meeting or invite for
+            each booking.
+          </p>
+        </div>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
+          <p className="font-medium text-slate-700">Example workflow</p>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+            <li>
+              In Teams, Zoom, or Google Meet, create a reusable meeting room or
+              recurring meeting.
+            </li>
+            <li>Copy the join link.</li>
+            <li>Paste it below.</li>
+            <li>
+              When a student books, CaseCoach sends both of you a calendar invite
+              using this same link.
+            </li>
+          </ol>
+        </div>
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass} htmlFor="meetingPlatform">
+                Meeting platform <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="meetingPlatform"
+                className={`${inputClass} mt-1.5`}
+                value={meetingPlatform}
+                onChange={(e) => setMeetingPlatform(e.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  Select…
+                </option>
+                {MEETING_PLATFORMS.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="meetingId">
+                Meeting ID <span className="font-normal text-slate-400">(optional)</span>
+              </label>
+              <input
+                id="meetingId"
+                className={`${inputClass} mt-1.5`}
+                value={meetingId}
+                onChange={(e) => setMeetingId(e.target.value)}
+                placeholder="123 456 789"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                If your meeting has an ID or passcode, add it here so students can
+                join without back-and-forth.
+              </p>
+            </div>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingUrl">
+              Reusable join link <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="meetingUrl"
+              className={`${inputClass} mt-1.5`}
+              value={meetingUrl}
+              onChange={(e) => setMeetingUrl(e.target.value)}
+              placeholder="https://teams.microsoft.com/l/meetup-join/…"
+              required
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Paste the permanent Teams, Zoom, or Google Meet link students should
+              use for every session with you.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingPasscode">
+              Passcode / password{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <input
+              id="meetingPasscode"
+              className={`${inputClass} mt-1.5`}
+              value={meetingPasscode}
+              onChange={(e) => setMeetingPasscode(e.target.value)}
+              placeholder="ABC123"
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="meetingInstructions">
+              Additional joining instructions{" "}
+              <span className="font-normal text-slate-400">(optional)</span>
+            </label>
+            <textarea
+              id="meetingInstructions"
+              rows={2}
+              className={`${inputClass} mt-1.5`}
+              value={meetingInstructions}
+              onChange={(e) => setMeetingInstructions(e.target.value)}
+              placeholder="e.g. I'll admit you from the lobby at the start time."
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Example: “I’ll admit you from the lobby at the start time” or “Use
+              the passcode above if prompted.”
+            </p>
+          </div>
+          <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
+            CaseCoach creates the calendar invite. You only provide the room where
+            the session happens.
+          </p>
+        </div>
+      </div>
+
       {error && (
         <p className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           <AlertCircle className="size-4 shrink-0" />
@@ -264,11 +450,19 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
       )}
 
       <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
-        {loading ? "Creating your profile…" : "Start coaching"}
+        {loading
+          ? editing
+            ? "Saving…"
+            : "Creating your profile…"
+          : editing
+            ? "Save changes"
+            : "Start coaching"}
       </button>
-      <p className="text-center text-xs text-slate-400">
-        No password needed — we&apos;ll recognize you by email next time.
-      </p>
+      {!editing && (
+        <p className="text-center text-xs text-slate-400">
+          No password needed — we&apos;ll recognize you by email next time.
+        </p>
+      )}
     </form>
   );
 }

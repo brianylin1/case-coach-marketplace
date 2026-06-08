@@ -7,12 +7,12 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
-  Mail,
   ShieldCheck,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
+import { MeetingActions, type BookingMeetingView } from "./MeetingActions";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -20,6 +20,7 @@ import type { SlotView } from "@/lib/types";
 type BookedResult = {
   id: number;
   pricePaid: number;
+  meeting: BookingMeetingView;
   coach: { name: string; email: string; firm: string; title: string };
 };
 
@@ -155,7 +156,7 @@ export function BookingModal({
       {slot && result && (
         <div className="p-6 text-center">
           <CheckCircle2 className="mx-auto size-12 text-emerald-500" />
-          <h2 className="mt-3 text-xl font-bold text-slate-900">You&apos;re booked!</h2>
+          <h2 className="mt-3 text-xl font-bold text-slate-900">Session confirmed</h2>
           <p className="mt-1 text-sm text-slate-600">
             Your session with {result.coach.name} is confirmed.
           </p>
@@ -163,19 +164,32 @@ export function BookingModal({
             <CalendarClock className="size-4 text-slate-400" />
             {slot.dateLabel} · {slot.timeLabel}
           </p>
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-            <p className="font-medium text-emerald-900">
-              Reach out to lock in the details:
-            </p>
+          <p className="mt-3 text-sm text-slate-600">
+            Calendar invite sent to your email. It includes the meeting link and
+            joining details.
+          </p>
+
+          <div className="mt-4 rounded-xl border border-slate-200 p-4 text-left">
+            <MeetingActions
+              variant="student"
+              bookingId={result.id}
+              title={`CaseCoach: case session with ${result.coach.name}`}
+              start={new Date(slot.startISO)}
+              durationMins={slot.durationMins}
+              meeting={result.meeting}
+            />
+          </div>
+
+          <p className="mt-3 text-xs text-slate-400">
+            Backup contact:{" "}
             <a
               href={`mailto:${result.coach.email}`}
-              className="mt-1 inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline"
+              className="font-medium text-slate-500 hover:underline"
             >
-              <Mail className="size-4" />
               {result.coach.email}
             </a>
-          </div>
-          <p className="mt-3 text-xs text-slate-400">
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
             Paid {formatRate(result.pricePaid)} · Payment simulated (MVP)
           </p>
           <div className="mt-4 flex gap-2">
