@@ -7,7 +7,6 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
-  Mail,
   ShieldCheck,
 } from "lucide-react";
 import { Modal } from "./Modal";
@@ -165,9 +164,14 @@ export function BookingModal({
             <CalendarClock className="size-4 text-slate-400" />
             {slot.dateLabel} · {slot.timeLabel}
           </p>
+          <p className="mt-3 text-sm text-slate-600">
+            Calendar invite sent to your email. It includes the meeting link and
+            joining details.
+          </p>
 
           <div className="mt-4 rounded-xl border border-slate-200 p-4 text-left">
             <MeetingActions
+              variant="student"
               bookingId={result.id}
               title={`CaseCoach: case session with ${result.coach.name}`}
               start={new Date(slot.startISO)}
@@ -175,23 +179,17 @@ export function BookingModal({
               meeting={result.meeting}
             />
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            A calendar invite has been generated and sent.
-          </p>
 
-          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm">
-            <p className="font-medium text-emerald-900">
-              Reach out to lock in the details:
-            </p>
+          <p className="mt-3 text-xs text-slate-400">
+            Backup contact:{" "}
             <a
               href={`mailto:${result.coach.email}`}
-              className="mt-1 inline-flex items-center gap-1.5 font-semibold text-emerald-700 hover:underline"
+              className="font-medium text-slate-500 hover:underline"
             >
-              <Mail className="size-4" />
               {result.coach.email}
             </a>
-          </div>
-          <p className="mt-3 text-xs text-slate-400">
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
             Paid {formatRate(result.pricePaid)} · Payment simulated (MVP)
           </p>
           <div className="mt-4 flex gap-2">

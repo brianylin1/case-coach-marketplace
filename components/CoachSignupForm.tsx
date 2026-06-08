@@ -271,11 +271,11 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">Meeting Information</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Default coaching room</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Students will use this information to join sessions you host through
-          CaseCoach. Paste your permanent Teams, Zoom, or Google Meet room. If
-          this is not configured, students cannot book you.
+          Students will receive this room in every calendar invite after they
+          book you. Use a reusable Teams, Zoom, or Google Meet link. Keep this
+          room active and accurate.
         </p>
         <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">

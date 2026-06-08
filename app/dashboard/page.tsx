@@ -111,6 +111,7 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                     </div>
                     <div className="mt-4 border-t border-slate-100 pt-3">
                       <MeetingActions
+                        variant="student"
                         bookingId={b.id}
                         title={`CaseCoach: case session with ${b.coach.name}`}
                         start={b.startTime}
@@ -247,9 +248,9 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
-            <Field label="Meeting room">
+            <Field label="Default coaching room">
               {hasMeetingInfo ? (
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   <div className="text-slate-700">{meetingPlatformLabel(coach.meetingPlatform)}</div>
                   <a
                     href={coach.meetingUrl ?? "#"}
@@ -265,6 +266,10 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                   {coach.meetingPasscode && (
                     <div className="text-xs text-slate-500">Passcode {coach.meetingPasscode}</div>
                   )}
+                  <p className="pt-1 text-xs text-slate-400">
+                    This is your default coaching room. It is included in every
+                    booking invite students receive.
+                  </p>
                 </div>
               ) : (
                 <span className="font-medium text-amber-700">⚠ Not configured</span>
