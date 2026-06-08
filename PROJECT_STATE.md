@@ -1,7 +1,14 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. Last updated after PR #3 (timezone support).
+> as the project evolves. Last updated after PR #5 (coach-provided meeting
+> rooms), merged to production.
+>
+> **Production:** live at **https://case-coach-marketplace.vercel.app** (branch
+> `main`, auto-deployed by Vercel). Current model = timezone-correct booking
+> (PR #3) + booking calendar invites that reuse a **coach-provided meeting room**
+> (PR #5). **No auto-generated video** (Jitsi removed). Booking emails are
+> **simulated** until `RESEND_API_KEY` is set in Vercel Production.
 
 ---
 
@@ -78,13 +85,18 @@ set availability once; students book a time in a couple of clicks).
 - **Coach** — `id`, `name`, `email` (unique), `firm`, `title`, `yearsAtFirm`,
   `headline?`, `bio`, `focusAreas` (JSON string), `hourlyRate` (0 = pro bono),
   `availability?` (free text), `linkedinUrl?`, `timezone` (default `"UTC"`),
-  `isActive`, `createdAt`; has `blocks[]`, `bookings[]`.
+  **reusable meeting room** (`meetingPlatform?` = teams|zoom|meet|other,
+  `meetingUrl?`, `meetingId?`, `meetingPasscode?`, `meetingInstructions?`),
+  `isActive`, `createdAt`; has `blocks[]`, `bookings[]`. **Bookable only when
+  `meetingUrl` + `meetingPlatform` are set.**
 - **AvailabilityBlock** — `id`, `coachId`, `weekday` (0=Mon…6=Sun),
   `startMinute`, `endMinute`. A coach's **recurring weekly** availability (UTC).
 - **Booking** — `id`, `coachId`, `studentId`, `startTime` (concrete UTC),
   `durationMins` (60), `focusArea?`, `pricePaid`, `paymentStatus`, `paymentRef?`,
-  `status` (CONFIRMED/CANCELLED), `createdAt`. **`@@unique([coachId, startTime])`**
-  prevents double-booking.
+  `status` (CONFIRMED/CANCELLED), **meeting snapshot** (`meetingPlatform?`,
+  `meetingUrl?`, `meetingId?`, `meetingPasscode?`, `meetingInstructions?` — copied
+  from the coach at booking time), `emailStatus` (PENDING/SENT/SIMULATED/FAILED),
+  `createdAt`. **`@@unique([coachId, startTime])`** prevents double-booking.
 
 **Relationships:** Coach 1—* AvailabilityBlock; Coach 1—* Booking; Student 1—*
 Booking. There is **no Slot table** — bookable 60-min sessions are **generated on
@@ -168,8 +180,7 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   styling, firm monograms → subtle in-cell tags, low-supply hint + better empty
   state, worded counts, tighter rows, and a wider sticky-header modal.
 
-- **PR #3 — "Timezone support"** *(in progress, branch
-  `claude/affectionate-fermi-760RL`).* Made the whole app timezone-correct
+- **PR #3 — "Timezone support"** *(merged into `main`).* Made the whole app timezone-correct
   without a schema change. New `lib/timezone.ts` (zero-dep, `Intl`-based)
   converts between UTC instants and wall-clock parts in any IANA zone,
   DST-correct (spring-forward gaps skipped, fall-back overlaps resolved to the
@@ -189,8 +200,8 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   generated a Jitsi room when a coach had none; Jitsi rooms didn't reliably start
   (moderator sign-in), so the auto-video approach was dropped.
 
-- **PR #5 — "Coach-provided meeting rooms (no auto video)"** *(in progress,
-  branch `claude/coach-meeting-rooms`).* Keeps PR #4's calendar/email/ICS
+- **PR #5 — "Coach-provided meeting rooms (no auto video)"** *(merged into
+  `main` — current production).* Keeps PR #4's calendar/email/ICS
   plumbing (`lib/ics.ts` RFC 5545 builder, `lib/email.ts` Resend shim — real
   sends only in production, `lib/calendar-links.ts`) but **removes Jitsi and all
   auto video**. Coaches now provide their own room in a required "Meeting
@@ -220,6 +231,16 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Payments:** simulated; no real Stripe; no coach payouts.
 - **Auth:** passwordless signed cookie — anyone with an email can sign in. No
   verification/OAuth. Not production-grade.
+- **Meeting rooms:** coach-provided and only *format*-validated (any `https://`
+  URL + a known platform — not checked for reachability). The booking snapshot is
+  **sticky**: editing the room later doesn't update past bookings or re-notify
+  already-booked students; there's no reschedule/cancel (so no
+  `METHOD:CANCEL`/`SEQUENCE` ICS updates). Existing prod coaches have no room and
+  are **unbookable until they configure one**.
+- **Email:** wired via Resend but **simulated unless `RESEND_API_KEY` is set AND
+  `VERCEL_ENV=production`** (needs a verified sending domain). The `.ics`,
+  calendar links, and Join button work regardless. Coach-provided fields are
+  HTML-escaped in email and RFC-escaped in the ICS.
 - **Other:** hourly slots only (no 30-min); `/api/sessions/cell` returns all
   coaches for an hour (display capped per firm at 10); prod seed/demo data is
   manual.
@@ -245,19 +266,25 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 ## 9. Current roadmap (ranked)
 
-Recommended next priorities (confirm before building):
+Done so far: ~~Timezone support (PR #3)~~ · ~~Booking calendar invites +
+coach-provided reusable meeting rooms (PR #5)~~. Recommended next priorities
+(confirm before building):
 
-1. ~~**Timezone support**~~ — ✅ shipped in PR #3 (coach authors in their tz;
-   student sees local; DST-correct). **Next-up is supply (#2).**
-2. **Coach onboarding / supply** — a two-sided marketplace needs liquidity; more
-   coaches + smoother onboarding (the demo has 8). No supply → no marketplace.
-3. **Trust signals** — drive student conversion: firm/identity verification,
-   LinkedIn proof, and the real ratings/reviews system (replaces the placeholder).
-4. **Mobile improvements** — large share of student traffic; single-day calendar
-   view + hover/preview parity. Current horizontal-scroll is a stopgap.
-5. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect). Can run
-   pro-bono/pilot first, so not the very top.
-6. **GTM tools** — analytics, referrals, email/reminders, SEO. After the core loop
+1. **Turn on real email** — set `RESEND_API_KEY` + `EMAIL_FROM` (verified domain,
+   optional `EMAIL_FROM_ADDRESS`) in Vercel Production so booking invites actually
+   send. Today they're simulated everywhere.
+2. **Coach onboarding / supply** — a two-sided marketplace needs liquidity. Note:
+   **existing prod coaches are now unbookable until they add a meeting room** —
+   prompt/migrate them — and the demo only has 8. No supply → no marketplace.
+3. **Trust signals** — firm/identity verification, LinkedIn proof, and a real
+   ratings/reviews system (replaces the placeholder).
+4. **Mobile improvements** — single-day calendar view; the current horizontal
+   scroll is a stopgap.
+5. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect), behind
+   `lib/payments.ts`.
+6. **Reschedule / cancel** — booking changes with `METHOD:CANCEL`/`SEQUENCE` ICS
+   updates and re-notification.
+7. **GTM tools** — analytics, referrals, reminders, SEO. After the core loop
    converts.
 
 ---
@@ -299,10 +326,14 @@ preview; the URL is in the Vercel bot's PR comment / the commit status
 
 **Key files:** `app/sessions/page.tsx` (calendar), `components/SessionCalendar.tsx`,
 `components/AvailabilityGrid.tsx`, `components/BookingModal.tsx`,
-`lib/availability.ts` (generation), `lib/timezone.ts` (tz/DST math),
-`lib/viewer-tz.ts` (viewer zone cookie), `components/TimezoneSync.tsx`,
-`lib/prisma.ts`, `lib/session.ts`, `lib/payments.ts`, `prisma/schema.prisma`,
-`prisma/seed.ts`.
+`components/MeetingActions.tsx` (meeting details + Join/calendar; student vs coach
+variant), `components/CoachSignupForm.tsx` (signup **and** edit/prefill),
+`app/signup/coach/page.tsx`, `app/dashboard/page.tsx`, `app/api/bookings/route.ts`
+(+ `[id]/ics`), `app/api/coaches/route.ts`, `lib/availability.ts` (generation),
+`lib/timezone.ts` (tz/DST math), `lib/viewer-tz.ts` (viewer zone cookie),
+`components/TimezoneSync.tsx`, `lib/ics.ts` (RFC 5545 builder), `lib/email.ts`
+(Resend shim), `lib/calendar-links.ts` (Google/Outlook links), `lib/prisma.ts`,
+`lib/session.ts`, `lib/payments.ts`, `prisma/schema.prisma`, `prisma/seed.ts`.
 
 **Useful scripts:** `npm run dev`, `npm run build`, `npm run lint`,
 `npm run db:setup`, `npm run db:seed`, `npm run db:reset`.
