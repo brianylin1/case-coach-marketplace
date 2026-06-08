@@ -323,20 +323,27 @@ export function CoachSignupForm({
         }`}
       >
         <h2 className="text-sm font-semibold text-slate-900">Your reusable coaching room</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Create one reusable Teams, Zoom, or Google Meet room that you control,
-          then paste the join link here. CaseCoach will automatically add this
-          room to every calendar invite when a student books you. You do not need
-          to create a new invite for each session.
-        </p>
+        <div className="mt-2 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+          <p className="text-sm font-semibold text-indigo-900">Do this once</p>
+          <p className="mt-1 text-sm text-indigo-900/80">
+            Create one reusable Teams, Zoom, or Google Meet room and paste the
+            join link here. CaseCoach will use this same room in every student
+            calendar invite. You do not need to create a new meeting or invite for
+            each booking.
+          </p>
+        </div>
         <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
           <p className="font-medium text-slate-700">Example workflow</p>
           <ol className="mt-1 list-decimal space-y-0.5 pl-4">
-            <li>Create a recurring or reusable Teams/Zoom/Meet room.</li>
-            <li>Paste the join link below.</li>
+            <li>
+              In Teams, Zoom, or Google Meet, create a reusable meeting room or
+              recurring meeting.
+            </li>
+            <li>Copy the join link.</li>
+            <li>Paste it below.</li>
             <li>
               When a student books, CaseCoach sends both of you a calendar invite
-              using this room.
+              using this same link.
             </li>
           </ol>
         </div>
@@ -382,7 +389,7 @@ export function CoachSignupForm({
           </div>
           <div>
             <label className={labelClass} htmlFor="meetingUrl">
-              Meeting URL <span className="text-red-500">*</span>
+              Reusable join link <span className="text-red-500">*</span>
             </label>
             <input
               id="meetingUrl"
@@ -393,8 +400,8 @@ export function CoachSignupForm({
               required
             />
             <p className="mt-1 text-xs text-slate-400">
-              Use a permanent or reusable meeting link, not a one-time meeting
-              link that expires.
+              Paste the permanent Teams, Zoom, or Google Meet link students should
+              use for every session with you.
             </p>
           </div>
           <div>
@@ -428,6 +435,10 @@ export function CoachSignupForm({
               the passcode above if prompted.”
             </p>
           </div>
+          <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
+            CaseCoach creates the calendar invite. You only provide the room where
+            the session happens.
+          </p>
         </div>
       </div>
 
