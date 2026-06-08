@@ -217,7 +217,8 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
       {!hasMeetingInfo && (
         <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-medium text-amber-900">
-            ⚠️ Students cannot book you until you configure your meeting room.
+            ⚠️ Add your reusable Teams, Zoom, or Google Meet room before students
+            can book you.
           </p>
           <Link href="/signup/coach?section=meeting" className={`${btnPrimary} shrink-0`}>
             Configure Meeting Room
@@ -274,7 +275,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
-            <Field label="Default coaching room">
+            <Field label="Reusable coaching room">
               {hasMeetingInfo ? (
                 <div className="space-y-1">
                   <div className="text-slate-700">{meetingPlatformLabel(coach.meetingPlatform)}</div>
@@ -293,7 +294,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
                     <div className="text-xs text-slate-500">Passcode {coach.meetingPasscode}</div>
                   )}
                   <p className="pt-1 text-xs text-slate-400">
-                    This is your default coaching room. It is included in every
+                    This is your reusable coaching room. It is included in every
                     booking invite students receive.
                   </p>
                 </div>

@@ -322,12 +322,24 @@ export function CoachSignupForm({
             : "border-slate-200"
         }`}
       >
-        <h2 className="text-sm font-semibold text-slate-900">Default coaching room</h2>
+        <h2 className="text-sm font-semibold text-slate-900">Your reusable coaching room</h2>
         <p className="mt-1 text-xs text-slate-500">
-          Students will receive this room in every calendar invite after they
-          book you. Use a reusable Teams, Zoom, or Google Meet link. Keep this
-          room active and accurate.
+          Create one reusable Teams, Zoom, or Google Meet room that you control,
+          then paste the join link here. CaseCoach will automatically add this
+          room to every calendar invite when a student books you. You do not need
+          to create a new invite for each session.
         </p>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600">
+          <p className="font-medium text-slate-700">Example workflow</p>
+          <ol className="mt-1 list-decimal space-y-0.5 pl-4">
+            <li>Create a recurring or reusable Teams/Zoom/Meet room.</li>
+            <li>Paste the join link below.</li>
+            <li>
+              When a student books, CaseCoach sends both of you a calendar invite
+              using this room.
+            </li>
+          </ol>
+        </div>
         <div className="mt-4 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -362,6 +374,10 @@ export function CoachSignupForm({
                 onChange={(e) => setMeetingId(e.target.value)}
                 placeholder="123 456 789"
               />
+              <p className="mt-1 text-xs text-slate-400">
+                If your meeting has an ID or passcode, add it here so students can
+                join without back-and-forth.
+              </p>
             </div>
           </div>
           <div>
@@ -376,6 +392,10 @@ export function CoachSignupForm({
               placeholder="https://teams.microsoft.com/l/meetup-join/…"
               required
             />
+            <p className="mt-1 text-xs text-slate-400">
+              Use a permanent or reusable meeting link, not a one-time meeting
+              link that expires.
+            </p>
           </div>
           <div>
             <label className={labelClass} htmlFor="meetingPasscode">
@@ -403,6 +423,10 @@ export function CoachSignupForm({
               onChange={(e) => setMeetingInstructions(e.target.value)}
               placeholder="e.g. I'll admit you from the lobby at the start time."
             />
+            <p className="mt-1 text-xs text-slate-400">
+              Example: “I’ll admit you from the lobby at the start time” or “Use
+              the passcode above if prompted.”
+            </p>
           </div>
         </div>
       </div>
