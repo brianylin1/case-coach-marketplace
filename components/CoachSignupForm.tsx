@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
@@ -8,27 +8,66 @@ import { FIRMS, FOCUS_AREAS, MEETING_PLATFORMS } from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
-export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }) {
+export type CoachFormValues = {
+  name: string;
+  email: string;
+  firm: string;
+  title: string;
+  yearsAtFirm: string;
+  headline: string;
+  bio: string;
+  focusAreas: string[];
+  hourlyRate: string;
+  availability: string;
+  linkedinUrl: string;
+  meetingPlatform: string;
+  meetingUrl: string;
+  meetingId: string;
+  meetingPasscode: string;
+  meetingInstructions: string;
+  timezone: string;
+};
+
+export function CoachSignupForm({
+  defaultTimezone,
+  initialValues,
+  editing = false,
+  focusSection,
+}: {
+  defaultTimezone: string;
+  initialValues?: Partial<CoachFormValues>;
+  editing?: boolean;
+  focusSection?: string;
+}) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [firm, setFirm] = useState<string>("");
-  const [title, setTitle] = useState("");
-  const [yearsAtFirm, setYearsAtFirm] = useState("");
-  const [headline, setHeadline] = useState("");
-  const [bio, setBio] = useState("");
-  const [focusAreas, setFocusAreas] = useState<string[]>([]);
-  const [hourlyRate, setHourlyRate] = useState("");
-  const [availability, setAvailability] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
-  const [meetingPlatform, setMeetingPlatform] = useState("");
-  const [meetingUrl, setMeetingUrl] = useState("");
-  const [meetingId, setMeetingId] = useState("");
-  const [meetingPasscode, setMeetingPasscode] = useState("");
-  const [meetingInstructions, setMeetingInstructions] = useState("");
-  const [timezone, setTimezone] = useState(defaultTimezone);
+  const iv = initialValues ?? {};
+  const [name, setName] = useState(iv.name ?? "");
+  const [email, setEmail] = useState(iv.email ?? "");
+  const [firm, setFirm] = useState<string>(iv.firm ?? "");
+  const [title, setTitle] = useState(iv.title ?? "");
+  const [yearsAtFirm, setYearsAtFirm] = useState(iv.yearsAtFirm ?? "");
+  const [headline, setHeadline] = useState(iv.headline ?? "");
+  const [bio, setBio] = useState(iv.bio ?? "");
+  const [focusAreas, setFocusAreas] = useState<string[]>(iv.focusAreas ?? []);
+  const [hourlyRate, setHourlyRate] = useState(iv.hourlyRate ?? "");
+  const [availability, setAvailability] = useState(iv.availability ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(iv.linkedinUrl ?? "");
+  const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
+  const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
+  const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
+  const [meetingPasscode, setMeetingPasscode] = useState(iv.meetingPasscode ?? "");
+  const [meetingInstructions, setMeetingInstructions] = useState(iv.meetingInstructions ?? "");
+  const [timezone, setTimezone] = useState(iv.timezone ?? defaultTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Scroll straight to the meeting section when arrived at via Configure Meeting Room.
+  const meetingRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focusSection === "meeting") {
+      meetingRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusSection]);
 
   function toggleFocus(key: string) {
     setFocusAreas((prev) =>
@@ -110,12 +149,16 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
           <input
             id="email"
             type="email"
-            className={`${inputClass} mt-1.5`}
+            className={`${inputClass} mt-1.5 ${editing ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@email.com"
             required
+            readOnly={editing}
           />
+          {editing && (
+            <p className="mt-1 text-xs text-slate-400">Email can&apos;t be changed.</p>
+          )}
         </div>
       </div>
 
@@ -270,7 +313,15 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
         />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <div
+        ref={meetingRef}
+        id="meeting-room"
+        className={`scroll-mt-6 rounded-xl border bg-slate-50/60 p-4 ${
+          focusSection === "meeting"
+            ? "border-indigo-400 ring-2 ring-indigo-200"
+            : "border-slate-200"
+        }`}
+      >
         <h2 className="text-sm font-semibold text-slate-900">Default coaching room</h2>
         <p className="mt-1 text-xs text-slate-500">
           Students will receive this room in every calendar invite after they
@@ -364,11 +415,19 @@ export function CoachSignupForm({ defaultTimezone }: { defaultTimezone: string }
       )}
 
       <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
-        {loading ? "Creating your profile…" : "Start coaching"}
+        {loading
+          ? editing
+            ? "Saving…"
+            : "Creating your profile…"
+          : editing
+            ? "Save changes"
+            : "Start coaching"}
       </button>
-      <p className="text-center text-xs text-slate-400">
-        No password needed — we&apos;ll recognize you by email next time.
-      </p>
+      {!editing && (
+        <p className="text-center text-xs text-slate-400">
+          No password needed — we&apos;ll recognize you by email next time.
+        </p>
+      )}
     </form>
   );
 }

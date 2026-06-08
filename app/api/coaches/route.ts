@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { setSession } from "@/lib/session";
+import { getSession, setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
@@ -77,11 +77,19 @@ export async function POST(request: Request) {
     isActive: true,
   };
 
-  const coach = await prisma.coach.upsert({
-    where: { email },
-    update: data,
-    create: { email, ...data },
-  });
+  // A logged-in coach is editing their own profile → update by session id so we
+  // never create a duplicate (and keep their existing email). Otherwise it's a
+  // signup: upsert by the unique email.
+  const session = await getSession();
+  const editingId =
+    session?.role === "coach" &&
+    (await prisma.coach.findUnique({ where: { id: session.id }, select: { id: true } }))
+      ? session.id
+      : null;
+
+  const coach = editingId
+    ? await prisma.coach.update({ where: { id: editingId }, data })
+    : await prisma.coach.upsert({ where: { email }, update: data, create: { email, ...data } });
 
   await setSession({ role: "coach", id: coach.id });
   return NextResponse.json({ id: coach.id, role: "coach" });

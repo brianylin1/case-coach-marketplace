@@ -219,7 +219,7 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
           <p className="text-sm font-medium text-amber-900">
             ⚠️ Students cannot book you until you configure your meeting room.
           </p>
-          <Link href="/signup/coach" className={`${btnPrimary} shrink-0`}>
+          <Link href="/signup/coach?section=meeting" className={`${btnPrimary} shrink-0`}>
             Configure Meeting Room
           </Link>
         </div>
@@ -232,7 +232,33 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
+          <div className="relative">
+            <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
+            {!hasMeetingInfo && (
+              // Visual gate only — pointer-events-none lets the coach keep
+              // editing/saving the grid underneath; just the CTA is clickable.
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/60 p-4">
+                <div className="max-w-sm rounded-xl border border-amber-300 bg-white p-4 text-center shadow-lg">
+                  <span className="text-2xl" aria-hidden>
+                    ⚠️
+                  </span>
+                  <p className="mt-1 font-semibold text-slate-900">
+                    Add your meeting room before students can book these times.
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    You can still plan availability, but it will stay hidden from
+                    students until your meeting room is configured.
+                  </p>
+                  <Link
+                    href="/signup/coach?section=meeting"
+                    className={`${btnPrimary} pointer-events-auto mt-3`}
+                  >
+                    Configure Meeting Room
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <aside className={`${cardClass} h-fit p-5`}>
