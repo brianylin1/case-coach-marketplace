@@ -4,12 +4,15 @@
 // people. EMAIL_FORCE_SEND=1 overrides for deliberate local testing.
 // Server-only.
 import { Resend } from "resend";
-import { focusLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
+import { BRAND, focusLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 import { formatSlotParts } from "@/lib/format";
 import { shortOffsetLabel } from "@/lib/timezone";
 import type { BookingMeeting } from "@/lib/ics";
 
-const FROM = process.env.EMAIL_FROM ?? "CaseCoach <bookings@downtocase.com>";
+// The sender display name recipients see is controlled by EMAIL_FROM in the
+// environment (Vercel Production). This literal is only the local/dev fallback —
+// keep it aligned with the brand.
+const FROM = process.env.EMAIL_FROM ?? `${BRAND} <bookings@downtocase.com>`;
 
 export type EmailResult = "SENT" | "SIMULATED" | "FAILED";
 
@@ -61,27 +64,46 @@ function detailsTable(rows: Row[]): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:20px 0;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">${cells}</table>`;
 }
 
-// One booking email. `joinUrl` must already be HTML-escaped.
-function emailHtml(opts: { heading: string; intro: string; rows: Row[]; joinUrl: string }): string {
+const CALENDAR_NOTE = "We attached a calendar invite with the session time and meeting details.";
+
+// One booking email. `joinUrl` must already be HTML-escaped; `beforeSection.body`
+// is trusted HTML (no user input).
+function emailHtml(opts: {
+  heading: string;
+  intro: string;
+  rows: Row[];
+  joinUrl: string;
+  beforeSection?: { title: string; body: string };
+}): string {
+  const before = opts.beforeSection
+    ? `<h2 style="font-size:15px;font-weight:600;margin:24px 0 6px;color:#0f172a">${opts.beforeSection.title}</h2>
+  <p style="font-size:14px;line-height:1.55;color:#475569;margin:0">${opts.beforeSection.body}</p>`
+    : "";
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;padding:12px;color:#0f172a">
-  <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#4f46e5">CaseCoach</div>
+  <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#4f46e5">${BRAND}</div>
   <div style="width:44px;border-top:3px solid #4f46e5;margin:10px 0 22px"></div>
   <h1 style="font-size:22px;line-height:1.3;margin:0 0 8px;color:#0f172a">${opts.heading}</h1>
   <p style="font-size:15px;line-height:1.55;color:#475569;margin:0">${opts.intro}</p>
   ${detailsTable(opts.rows)}
   <a href="${opts.joinUrl}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:12px 24px;border-radius:10px">Join the session</a>
   <p style="font-size:13px;line-height:1.5;color:#64748b;margin:14px 0 0">Button not working? Use this link:<br><a href="${opts.joinUrl}" style="color:#4f46e5;word-break:break-all">${opts.joinUrl}</a></p>
-  <p style="font-size:13px;line-height:1.5;color:#64748b;margin:20px 0 0">A calendar invite (<strong>invite.ics</strong>) is attached to this email — open it to add the session to your calendar.</p>
+  ${before}
+  <p style="font-size:13px;line-height:1.5;color:#64748b;margin:20px 0 0">${CALENDAR_NOTE}</p>
   <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0 16px">
   <p style="font-size:13px;line-height:1.5;color:#94a3b8;margin:0">Need help? Contact <a href="mailto:${SUPPORT_EMAIL}" style="color:#4f46e5;text-decoration:none">${SUPPORT_EMAIL}</a></p>
-  <p style="font-size:12px;line-height:1.5;color:#cbd5e1;margin:8px 0 0">CaseCoach — 1:1 case-interview coaching with MBB consultants.</p>
+  <p style="font-size:12px;line-height:1.5;color:#cbd5e1;margin:8px 0 0">${BRAND} — 1:1 case-interview coaching with MBB consultants.</p>
 </div>`;
 }
 
-// Meeting metadata rows shared by both emails (platform + any ID/passcode/notes).
-function meetingRows(m: BookingMeeting): Row[] {
+function platformRow(m: BookingMeeting): Row {
+  return { label: "Meeting platform", value: escapeHtml(meetingPlatformLabel(m.platform)) };
+}
+
+// Full meeting metadata for the student (who doesn't own the room): platform
+// plus any ID / passcode / instructions.
+function studentMeetingRows(m: BookingMeeting): Row[] {
   return [
-    { label: "Platform", value: escapeHtml(meetingPlatformLabel(m.platform)) },
+    platformRow(m),
     ...(m.id ? [{ label: "Meeting ID", value: escapeHtml(m.id) }] : []),
     ...(m.passcode ? [{ label: "Passcode", value: escapeHtml(m.passcode) }] : []),
     ...(m.instructions ? [{ label: "Instructions", value: escapeHtml(m.instructions) }] : []),
@@ -111,40 +133,44 @@ export function renderBookingEmails(input: BookingEmailInput): RenderedBookingEm
   const coachName = escapeHtml(input.coach.name);
   const studentName = escapeHtml(input.student.name);
   const focusCell = escapeHtml(focus);
-  const mRows = meetingRows(input.meeting);
 
+  // Student: trustworthy confirmation with full meeting details (they don't own
+  // the room).
   const studentHtml = emailHtml({
     heading: "Your session is confirmed",
     intro: `You're booked with ${coachName} for a 1:1 case-interview session. Here are the details:`,
     rows: [
-      { label: "When", value: studentWhen },
+      { label: "Date & time", value: studentWhen },
       { label: "Coach", value: coachName },
-      { label: "Student", value: studentName },
       { label: "Focus", value: focusCell },
-      ...mRows,
-      { label: "Coach contact", value: mailtoCell(input.coach.email) },
+      ...studentMeetingRows(input.meeting),
+      { label: "Coach email", value: mailtoCell(input.coach.email) },
     ],
     joinUrl,
   });
 
+  // Coach: action-oriented — who booked, how to reach them, and what to do next.
   const coachHtml = emailHtml({
-    heading: "New booking confirmed",
-    intro: `${studentName} just booked a 1:1 case session with you. Here are the details:`,
+    heading: "Someone is down to case with you",
+    intro: `${studentName} booked a 1:1 case coaching session with you. Here are the details.`,
     rows: [
-      { label: "When", value: coachWhen },
+      { label: "Date & time", value: coachWhen },
       { label: "Student", value: studentName },
-      { label: "Coach", value: coachName },
+      { label: "Student email", value: mailtoCell(input.student.email) },
       { label: "Focus", value: focusCell },
-      ...mRows,
-      { label: "Student contact", value: mailtoCell(input.student.email) },
+      platformRow(input.meeting),
     ],
     joinUrl,
+    beforeSection: {
+      title: "Before the session",
+      body: `Use your reusable coaching room linked above. If anything changes, contact the student directly or email <a href="mailto:${SUPPORT_EMAIL}" style="color:#4f46e5;text-decoration:none">${SUPPORT_EMAIL}</a>.`,
+    },
   });
 
   return {
-    studentSubject: `Your CaseCoach session with ${input.coach.name} is confirmed`,
+    studentSubject: `Your ${BRAND} session with ${input.coach.name} is confirmed`,
     studentHtml,
-    coachSubject: `New CaseCoach booking: ${input.student.name} on ${coachDate}`,
+    coachSubject: `Someone is down to case with you: ${input.student.name} on ${coachDate}`,
     coachHtml,
   };
 }

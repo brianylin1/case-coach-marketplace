@@ -2,7 +2,7 @@
 // only sharp edges are CRLF line endings, 75-octet line folding, and TEXT
 // escaping, all handled here. Event times are emitted in UTC (Z), so every
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
-import { focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
+import { BRAND, focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 
 const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@downtocase.com";
 
@@ -82,7 +82,7 @@ export function buildIcs(
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//CaseCoach//Booking//EN",
+    `PRODID:-//${BRAND}//Booking//EN`,
     "CALSCALE:GREGORIAN",
     `METHOD:${method}`,
     "BEGIN:VEVENT",
@@ -136,7 +136,7 @@ export function buildBookingEvent(input: {
   // Lead the description with the join link so it's the first thing calendar
   // clients surface; keep the platform/ID/passcode and a support contact below.
   const description = [
-    `Your CaseCoach 1:1 case-interview session.`,
+    `Your ${BRAND} 1:1 case-interview session.`,
     ``,
     `Join (${meetingPlatformLabel(m.platform)}): ${m.url}`,
     m.id ? `Meeting ID: ${m.id}` : null,
@@ -153,16 +153,18 @@ export function buildBookingEvent(input: {
     .join("\n");
 
   return {
+    // UID stays on the original domain so already-issued invites update in place
+    // (it's an opaque identifier, never shown to users) — not a branding string.
     uid: `booking-${input.bookingId}@casecoach.app`,
     start: input.start,
     durationMins: input.durationMins,
-    summary: `CaseCoach session: ${input.studentName} with ${input.coachName}`,
+    summary: `${BRAND} session: ${input.studentName} with ${input.coachName}`,
     description,
     // A human-friendly location (the platform name) rather than the raw URL, so
     // Gmail/Outlook don't render the join link as a physical place. The link is
     // prominent in the description above (and the email's Join button).
     location: meetingLocationLabel(m.platform),
-    organizer: { name: "CaseCoach", email: ORGANIZER_EMAIL },
+    organizer: { name: BRAND, email: ORGANIZER_EMAIL },
     attendees: [
       { name: input.studentName, email: input.studentEmail },
       { name: input.coachName, email: input.coachEmail },
