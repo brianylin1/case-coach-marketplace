@@ -133,24 +133,33 @@ export function buildBookingEvent(input: {
 }): IcsEvent {
   const focus = input.focusArea ? focusLabel(input.focusArea) : "Case coaching";
   const m = input.meeting;
-  // Lead the description with the join link so it's the first thing calendar
-  // clients surface; keep the platform/ID/passcode and a support contact below.
-  const description = [
-    `Your ${BRAND} 1:1 case-interview session.`,
+  // User-visible invite copy (Down to Case branding). Mechanics below —
+  // organizer, attendees, times, UID, location, alarm — are unchanged.
+  const lines: string[] = [
+    `${BRAND} session`,
     ``,
-    `Join (${meetingPlatformLabel(m.platform)}): ${m.url}`,
-    m.id ? `Meeting ID: ${m.id}` : null,
-    m.passcode ? `Passcode: ${m.passcode}` : null,
-    m.instructions ? `Instructions: ${m.instructions}` : null,
+    `You're all set.`,
     ``,
-    `Focus: ${focus}`,
-    `Coach: ${input.coachName}`,
-    `Student: ${input.studentName}`,
+    `Join link:`,
+    m.url,
     ``,
-    `Need help? Contact ${SUPPORT_EMAIL}`,
-  ]
-    .filter((line) => line !== null)
-    .join("\n");
+    `Coach:`,
+    input.coachName,
+    ``,
+    `Student:`,
+    input.studentName,
+    ``,
+    `Focus area:`,
+    focus,
+    ``,
+    `Meeting platform:`,
+    meetingPlatformLabel(m.platform),
+  ];
+  if (m.id) lines.push(``, `Meeting ID:`, m.id);
+  if (m.passcode) lines.push(``, `Passcode:`, m.passcode);
+  if (m.instructions) lines.push(``, `Joining instructions:`, m.instructions);
+  lines.push(``, `Need help?`, SUPPORT_EMAIL, ``, `See you at the case.`);
+  const description = lines.join("\n");
 
   return {
     // UID stays on the original domain so already-issued invites update in place
@@ -158,7 +167,7 @@ export function buildBookingEvent(input: {
     uid: `booking-${input.bookingId}@casecoach.app`,
     start: input.start,
     durationMins: input.durationMins,
-    summary: `${BRAND} session: ${input.studentName} with ${input.coachName}`,
+    summary: `${input.studentName} x ${input.coachName} | ${BRAND}`,
     description,
     // A human-friendly location (the platform name) rather than the raw URL, so
     // Gmail/Outlook don't render the join link as a physical place. The link is
