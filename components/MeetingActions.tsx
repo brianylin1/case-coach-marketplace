@@ -1,6 +1,6 @@
 import { Video } from "lucide-react";
 import { googleCalendarUrl, outlookCalendarUrl } from "@/lib/calendar-links";
-import { meetingPlatformLabel } from "@/lib/constants";
+import { meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 
 // Meeting details + actions for a booked session, shared by the booking
 // confirmation modal and the dashboard cards. No hooks / no "use client", so it
@@ -91,12 +91,16 @@ export function MeetingActions({
   meeting: BookingMeetingView;
   variant?: "student" | "coach";
 }) {
+  // Lead the calendar-event details with the join link, and keep the location a
+  // human-friendly platform name (not the raw URL) — consistent with the .ics
+  // attachment built in lib/ics.ts.
   const description = [
-    meeting.platform ? `Platform: ${meetingPlatformLabel(meeting.platform)}` : null,
     meeting.url ? `Join: ${meeting.url}` : null,
+    meeting.platform ? `Platform: ${meetingPlatformLabel(meeting.platform)}` : null,
     meeting.id ? `Meeting ID: ${meeting.id}` : null,
     meeting.passcode ? `Passcode: ${meeting.passcode}` : null,
     meeting.instructions || null,
+    `Need help? Contact ${SUPPORT_EMAIL}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -104,8 +108,8 @@ export function MeetingActions({
     title,
     start,
     durationMins,
-    description: description || "Your CaseCoach 1:1 session.",
-    location: meeting.url ?? "",
+    description,
+    location: meetingLocationLabel(meeting.platform),
   };
   const calHref = { google: googleCalendarUrl(calInput), outlook: outlookCalendarUrl(calInput) };
   const hasDetails = Boolean(
