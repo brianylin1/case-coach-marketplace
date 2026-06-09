@@ -2,9 +2,9 @@
 // only sharp edges are CRLF line endings, 75-octet line folding, and TEXT
 // escaping, all handled here. Event times are emitted in UTC (Z), so every
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
-import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
+import { focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 
-const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@casecoach.app";
+const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@downtocase.com";
 
 // Coach-provided meeting details, snapshotted onto the booking.
 export type BookingMeeting = {
@@ -133,19 +133,21 @@ export function buildBookingEvent(input: {
 }): IcsEvent {
   const focus = input.focusArea ? focusLabel(input.focusArea) : "Case coaching";
   const m = input.meeting;
+  // Lead the description with the join link so it's the first thing calendar
+  // clients surface; keep the platform/ID/passcode and a support contact below.
   const description = [
     `Your CaseCoach 1:1 case-interview session.`,
-    `Focus: ${focus}`,
-    m.platform ? `Platform: ${meetingPlatformLabel(m.platform)}` : null,
-    `Join: ${m.url}`,
+    ``,
+    `Join (${meetingPlatformLabel(m.platform)}): ${m.url}`,
     m.id ? `Meeting ID: ${m.id}` : null,
     m.passcode ? `Passcode: ${m.passcode}` : null,
     m.instructions ? `Instructions: ${m.instructions}` : null,
     ``,
-    `Student: ${input.studentName}`,
+    `Focus: ${focus}`,
     `Coach: ${input.coachName}`,
+    `Student: ${input.studentName}`,
     ``,
-    `Booked via CaseCoach.`,
+    `Need help? Contact ${SUPPORT_EMAIL}`,
   ]
     .filter((line) => line !== null)
     .join("\n");
@@ -154,9 +156,12 @@ export function buildBookingEvent(input: {
     uid: `booking-${input.bookingId}@casecoach.app`,
     start: input.start,
     durationMins: input.durationMins,
-    summary: `CaseCoach: case session — ${input.studentName} × ${input.coachName}`,
+    summary: `CaseCoach session: ${input.studentName} with ${input.coachName}`,
     description,
-    location: m.url,
+    // A human-friendly location (the platform name) rather than the raw URL, so
+    // Gmail/Outlook don't render the join link as a physical place. The link is
+    // prominent in the description above (and the email's Join button).
+    location: meetingLocationLabel(m.platform),
     organizer: { name: "CaseCoach", email: ORGANIZER_EMAIL },
     attendees: [
       { name: input.studentName, email: input.studentEmail },

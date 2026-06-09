@@ -87,3 +87,16 @@ export function isMeetingPlatform(value: string): boolean {
 export function meetingPlatformLabel(key: string | null | undefined): string {
   return (key && MEETING_PLATFORM_LABELS[key]) || "Video call";
 }
+
+// A human-friendly "location" for calendar entries: the named platform when we
+// recognize it, else a generic "Video call". Never the raw join URL — that
+// belongs in the description, not a LOCATION field (which clients treat as a
+// physical place).
+export function meetingLocationLabel(platform: string | null | undefined): string {
+  return platform === "teams" || platform === "zoom" || platform === "meet"
+    ? meetingPlatformLabel(platform)
+    : "Video call";
+}
+
+// Support contact surfaced in booking emails and calendar invites.
+export const SUPPORT_EMAIL = "support@downtocase.com";
