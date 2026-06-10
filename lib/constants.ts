@@ -98,5 +98,9 @@ export function meetingLocationLabel(platform: string | null | undefined): strin
     : "Video call";
 }
 
+// Product brand (display name). Currently used in booking emails + calendar
+// invites; the rest of the app/site is intentionally not rebranded yet.
+export const BRAND = "Down to Case";
+
 // Support contact surfaced in booking emails and calendar invites.
 export const SUPPORT_EMAIL = "support@downtocase.com";

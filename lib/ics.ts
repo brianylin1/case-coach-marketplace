@@ -2,7 +2,7 @@
 // only sharp edges are CRLF line endings, 75-octet line folding, and TEXT
 // escaping, all handled here. Event times are emitted in UTC (Z), so every
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
-import { focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
+import { BRAND, focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 
 const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@downtocase.com";
 
@@ -23,6 +23,7 @@ export type IcsEvent = {
   durationMins: number;
   summary: string;
   description: string;
+  htmlDescription?: string; // optional Outlook-friendly rich alternate (X-ALT-DESC)
   location: string;
   organizer: { name: string; email: string };
   attendees: IcsAttendee[];
@@ -47,6 +48,15 @@ function esc(value: string): string {
     .replace(/;/g, "\\;")
     .replace(/,/g, "\\,")
     .replace(/\r?\n/g, "\\n");
+}
+
+// Escape user-provided text for embedding inside the X-ALT-DESC HTML payload.
+function escHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // Quote a parameter value (CN); strip embedded quotes since they can't be escaped.
@@ -82,7 +92,7 @@ export function buildIcs(
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//CaseCoach//Booking//EN",
+    `PRODID:-//${BRAND}//Booking//EN`,
     "CALSCALE:GREGORIAN",
     `METHOD:${method}`,
     "BEGIN:VEVENT",
@@ -93,6 +103,11 @@ export function buildIcs(
     `DTEND:${utcStamp(end)}`,
     kv("SUMMARY", esc(event.summary)),
     kv("DESCRIPTION", esc(event.description)),
+    // Rich HTML alternate for clients that support it (chiefly Outlook). The
+    // plain DESCRIPTION above stays the source of truth for everyone else.
+    ...(event.htmlDescription
+      ? [fold(`X-ALT-DESC;FMTTYPE=text/html:${esc(event.htmlDescription)}`)]
+      : []),
     kv("LOCATION", esc(event.location)),
     "STATUS:CONFIRMED",
     "TRANSP:OPAQUE",
@@ -133,36 +148,86 @@ export function buildBookingEvent(input: {
 }): IcsEvent {
   const focus = input.focusArea ? focusLabel(input.focusArea) : "Case coaching";
   const m = input.meeting;
-  // Lead the description with the join link so it's the first thing calendar
-  // clients surface; keep the platform/ID/passcode and a support contact below.
-  const description = [
-    `Your CaseCoach 1:1 case-interview session.`,
+  const platformLabel = meetingPlatformLabel(m.platform);
+
+  // Plain-text DESCRIPTION (source of truth for every client). No date/time here
+  // on purpose — the calendar localizes DTSTART/DTEND per viewer; a baked-in time
+  // would only introduce timezone ambiguity.
+  const lines: string[] = [
+    `Hey ${input.studentName} and ${input.coachName},`,
     ``,
-    `Join (${meetingPlatformLabel(m.platform)}): ${m.url}`,
-    m.id ? `Meeting ID: ${m.id}` : null,
-    m.passcode ? `Passcode: ${m.passcode}` : null,
-    m.instructions ? `Instructions: ${m.instructions}` : null,
+    `Your 1:1 case coaching session is booked. You'll find the session details below. Have a great case!`,
     ``,
-    `Focus: ${focus}`,
-    `Coach: ${input.coachName}`,
-    `Student: ${input.studentName}`,
+    `Session details`,
     ``,
-    `Need help? Contact ${SUPPORT_EMAIL}`,
-  ]
-    .filter((line) => line !== null)
-    .join("\n");
+    `Coach`,
+    input.coachName,
+    ``,
+    `Student`,
+    input.studentName,
+    ``,
+    `Focus Area`,
+    focus,
+    ``,
+    `Meeting Platform`,
+    platformLabel,
+  ];
+  if (m.id) lines.push(``, `Meeting ID`, m.id);
+  if (m.passcode) lines.push(``, `Passcode`, m.passcode);
+  if (m.instructions) lines.push(``, `Joining Instructions`, m.instructions);
+  lines.push(
+    ``,
+    `Join the session:`,
+    m.url,
+    ``,
+    `Need help?`,
+    SUPPORT_EMAIL,
+    ``,
+    BRAND,
+  );
+  const description = lines.join("\n");
+
+  // Outlook-friendly HTML alternate, mirroring the plain text + the email layout.
+  const sName = escHtml(input.studentName);
+  const cName = escHtml(input.coachName);
+  const detailRow = (label: string, value: string) =>
+    `<tr><td style="padding:3px 16px 3px 0;color:#64748b;white-space:nowrap;vertical-align:top">${label}</td>` +
+    `<td style="padding:3px 0;font-weight:500">${value}</td></tr>`;
+  const detailRows = [
+    detailRow("Coach", cName),
+    detailRow("Student", sName),
+    detailRow("Focus Area", escHtml(focus)),
+    detailRow("Meeting Platform", escHtml(platformLabel)),
+    ...(m.id ? [detailRow("Meeting ID", escHtml(m.id))] : []),
+    ...(m.passcode ? [detailRow("Passcode", escHtml(m.passcode))] : []),
+    ...(m.instructions ? [detailRow("Joining Instructions", escHtml(m.instructions))] : []),
+  ].join("");
+  const htmlDescription =
+    `<html><body style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;font-size:14px;line-height:1.5">` +
+    `<div style="font-size:18px;font-weight:700;color:#4f46e5">${BRAND}</div>` +
+    `<p style="margin:12px 0 0">Hey ${sName} and ${cName},</p>` +
+    `<p style="margin:8px 0 0">Your 1:1 case coaching session is booked. You'll find the session details below. Have a great case!</p>` +
+    `<h3 style="font-size:14px;font-weight:600;margin:18px 0 6px">Session details</h3>` +
+    `<table style="border-collapse:collapse;font-size:14px">${detailRows}</table>` +
+    `<p style="margin:16px 0 0"><a href="${escHtml(m.url)}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px">Join Session</a></p>` +
+    `<p style="margin:14px 0 0;color:#64748b">Need help? <a href="mailto:${SUPPORT_EMAIL}" style="color:#4f46e5;text-decoration:none">${SUPPORT_EMAIL}</a></p>` +
+    `<p style="margin:16px 0 0;color:#94a3b8;font-size:12px">${BRAND}</p>` +
+    `</body></html>`;
 
   return {
+    // UID stays on the original domain so already-issued invites update in place
+    // (it's an opaque identifier, never shown to users) — not a branding string.
     uid: `booking-${input.bookingId}@casecoach.app`,
     start: input.start,
     durationMins: input.durationMins,
-    summary: `CaseCoach session: ${input.studentName} with ${input.coachName}`,
+    summary: `${input.studentName} and ${input.coachName} are ${BRAND}!`,
     description,
+    htmlDescription,
     // A human-friendly location (the platform name) rather than the raw URL, so
     // Gmail/Outlook don't render the join link as a physical place. The link is
-    // prominent in the description above (and the email's Join button).
+    // in the description above (and the email's Join button).
     location: meetingLocationLabel(m.platform),
-    organizer: { name: "CaseCoach", email: ORGANIZER_EMAIL },
+    organizer: { name: BRAND, email: ORGANIZER_EMAIL },
     attendees: [
       { name: input.studentName, email: input.studentEmail },
       { name: input.coachName, email: input.coachEmail },
