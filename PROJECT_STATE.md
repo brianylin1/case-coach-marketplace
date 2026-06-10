@@ -1,14 +1,16 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. Last updated after PR #5 (coach-provided meeting
-> rooms), merged to production.
+> as the project evolves. Last updated after PR #7 (Down to Case email +
+> calendar-invite branding), merged to production.
 >
-> **Production:** live at **https://case-coach-marketplace.vercel.app** (branch
-> `main`, auto-deployed by Vercel). Current model = timezone-correct booking
-> (PR #3) + booking calendar invites that reuse a **coach-provided meeting room**
-> (PR #5). **No auto-generated video** (Jitsi removed). Booking emails are
-> **simulated** until `RESEND_API_KEY` is set in Vercel Production.
+> **Production:** live at **https://www.downtocase.com** (primary domain; the
+> apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
+> still resolves). Branch `main`, auto-deployed by Vercel. Current model =
+> timezone-correct booking (PR #3) + booking calendar invites that reuse a
+> **coach-provided meeting room** (PR #5), with **live booking email** (Resend on
+> the verified `downtocase.com` domain) branded **"Down to Case"** (PRs #6–#7).
+> **No auto-generated video** (Jitsi removed).
 
 ---
 
@@ -62,7 +64,20 @@ set availability once; students book a time in a couple of clicks).
   → merge → production.
 - **Vercel:** connected to the repo, auto-deploys. Production branch = `main`.
   Env vars set for **Production + Preview + Development**: `DATABASE_URL` (Neon
-  pooled string), `SESSION_SECRET`. Build command runs `prisma db push`.
+  pooled string), `SESSION_SECRET`. **Email (Production):** `RESEND_API_KEY`,
+  `EMAIL_FROM` (`Down to Case <bookings@downtocase.com>`), `EMAIL_FROM_ADDRESS`
+  (`bookings@downtocase.com`). Build command runs `prisma db push`.
+- **Custom domain:** **`downtocase.com`** is the primary production domain —
+  canonical host **`www.downtocase.com`** (200); the apex `downtocase.com`
+  permanently redirects (308) to `www`. `case-coach-marketplace.vercel.app` still
+  resolves.
+- **Email (Resend):** booking email is **live in production** via Resend on the
+  verified **`downtocase.com`** domain. Sends from **`bookings@downtocase.com`**
+  (sender display name **"Down to Case"** from `EMAIL_FROM`); the `.ics`
+  `ORGANIZER` email comes from `EMAIL_FROM_ADDRESS`. Support/replies go to
+  **`support@downtocase.com`**, which forwards to the operator's inbox. Sending is
+  gated to `VERCEL_ENV=production` (or `EMAIL_FORCE_SEND=1` locally), so previews
+  don't email real people.
 - **Neon:** free-tier Postgres. Use the **pooled** connection string (host
   contains `-pooler`) as `DATABASE_URL`. Tables are created/synced by the build's
   `prisma db push` (or locally via `npm run db:setup`); demo data via
@@ -139,7 +154,7 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   success it **snapshots the coach's meeting details** (platform / URL / ID /
   passcode / instructions) onto the booking, then (via `after()`) **emails both
   parties a calendar invite** (`.ics`) with times in each recipient's zone —
-  Resend, simulated unless production (see PR #5). The confirmation modal,
+  Resend — **live in production** (PRs #6–#7; branded "Down to Case"). The confirmation modal,
   dashboards, emails, and `.ics` all surface platform / URL / ID / passcode +
   Join + Google/Outlook/`.ics`; `GET /api/bookings/[id]/ics` serves the invite to
   either party.
@@ -216,6 +231,30 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   existed). Existing coaches with no room become unbookable until they configure
   one. No Google/Microsoft/Zoom/Daily/Whereby integration.
 
+- **PR #6 — "Polish booking emails + calendar invite presentation"** *(merged
+  into `main`).* Production-ready pass on the booking emails and `.ics`: cleaner
+  subjects, a branded layout with a details table, a prominent Join button +
+  plain-text backup link, a calendar-invite note, and a `support@…` footer;
+  removed user-facing "simulated payment (MVP)" language. `.ics` now uses the
+  platform name as `LOCATION` (not the raw URL), with the join link + support
+  contact in the description; the in-app Google/Outlook "Add to calendar" links
+  were aligned to match. Email render path only — no logic/data/timezone changes.
+
+- **PR #7 — "Down to Case email + calendar-invite branding" (+ copy passes)**
+  *(merged into `main` — current production).* Rebranded the booking email and
+  invite from "CaseCoach" to **"Down to Case"** via a shared `BRAND` constant
+  (wordmark, footer, subjects; `.ics` `PRODID` / `SUMMARY` / `DESCRIPTION` /
+  `ORGANIZER` **display name**). The coach email was rewritten to be
+  action-oriented (subject **"Someone's down to case! — <Student> booked
+  <Date>"**, "Session details" table, "Before you join"); the student email
+  parallels it (**"…will case you on <Date>"**). The `.ics` title is now
+  **"<Student> and <Coach> are Down to Case!"** with an Outlook-friendly
+  **`X-ALT-DESC`** HTML alternate (plain-text `DESCRIPTION` preserved for all
+  clients). **Email render path only** — booking, availability, timezone,
+  meeting-room gating, payments, auth, and Resend config untouched; the `.ics`
+  organizer email, event times, and opaque `UID` (`booking-<id>@casecoach.app`)
+  are unchanged. Sender **display name** is env-controlled via `EMAIL_FROM`.
+
 ---
 
 ## 7. Known limitations
@@ -237,10 +276,14 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   already-booked students; there's no reschedule/cancel (so no
   `METHOD:CANCEL`/`SEQUENCE` ICS updates). Existing prod coaches have no room and
   are **unbookable until they configure one**.
-- **Email:** wired via Resend but **simulated unless `RESEND_API_KEY` is set AND
-  `VERCEL_ENV=production`** (needs a verified sending domain). The `.ics`,
-  calendar links, and Join button work regardless. Coach-provided fields are
-  HTML-escaped in email and RFC-escaped in the ICS.
+- **Email:** ✅ **live in production** via Resend on the verified `downtocase.com`
+  domain — booking emails + the `.ics` send from `bookings@downtocase.com` (sender
+  "Down to Case"); support at `support@downtocase.com` forwards to the operator.
+  Still gated to `VERCEL_ENV=production` (or `EMAIL_FORCE_SEND=1`), so previews and
+  local runs don't send. Each booking sends two emails (student + coach); if the
+  second fails, the booking's `emailStatus` is marked `FAILED` even if the first
+  was delivered. Coach-provided fields are HTML-escaped in email and RFC-escaped in
+  the ICS. No reschedule/cancel updates (`METHOD:CANCEL`/`SEQUENCE`) yet.
 - **Other:** hourly slots only (no 30-min); `/api/sessions/cell` returns all
   coaches for an hour (display capped per firm at 10); prod seed/demo data is
   manual.
@@ -267,24 +310,23 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 ## 9. Current roadmap (ranked)
 
 Done so far: ~~Timezone support (PR #3)~~ · ~~Booking calendar invites +
-coach-provided reusable meeting rooms (PR #5)~~. Recommended next priorities
+coach-provided reusable meeting rooms (PR #5)~~ · ~~Booking email/invite polish +
+"Down to Case" branding (PRs #6–#7)~~ · ~~Turn on real email — Resend live in
+production on the verified `downtocase.com` domain~~. Recommended next priorities
 (confirm before building):
 
-1. **Turn on real email** — set `RESEND_API_KEY` + `EMAIL_FROM` (verified domain,
-   optional `EMAIL_FROM_ADDRESS`) in Vercel Production so booking invites actually
-   send. Today they're simulated everywhere.
-2. **Coach onboarding / supply** — a two-sided marketplace needs liquidity. Note:
-   **existing prod coaches are now unbookable until they add a meeting room** —
+1. **Coach onboarding / supply** — a two-sided marketplace needs liquidity. Note:
+   **existing prod coaches are unbookable until they add a meeting room** —
    prompt/migrate them — and the demo only has 8. No supply → no marketplace.
-3. **Trust signals** — firm/identity verification, LinkedIn proof, and a real
+2. **Trust signals** — firm/identity verification, LinkedIn proof, and a real
    ratings/reviews system (replaces the placeholder).
-4. **Mobile improvements** — single-day calendar view; the current horizontal
+3. **Mobile improvements** — single-day calendar view; the current horizontal
    scroll is a stopgap.
-5. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect), behind
+4. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect), behind
    `lib/payments.ts`.
-6. **Reschedule / cancel** — booking changes with `METHOD:CANCEL`/`SEQUENCE` ICS
+5. **Reschedule / cancel** — booking changes with `METHOD:CANCEL`/`SEQUENCE` ICS
    updates and re-notification.
-7. **GTM tools** — analytics, referrals, reminders, SEO. After the core loop
+6. **GTM tools** — analytics, referrals, reminders, SEO. After the core loop
    converts.
 
 ---
