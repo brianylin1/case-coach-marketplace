@@ -9,14 +9,30 @@ import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
 const FIRM_OPTIONS = FIRMS.map((f) => ({ key: f, label: f }));
 
-export function StudentSignupForm() {
+export type StudentFormValues = {
+  name: string;
+  email: string;
+  timeline: string;
+  goal: string;
+  targetFirms: string[];
+  focusAreas: string[];
+};
+
+export function StudentSignupForm({
+  initialValues,
+  editing = false,
+}: {
+  initialValues?: Partial<StudentFormValues>;
+  editing?: boolean;
+}) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [timeline, setTimeline] = useState("");
-  const [goal, setGoal] = useState("");
-  const [targetFirms, setTargetFirms] = useState<string[]>([]);
-  const [focusAreas, setFocusAreas] = useState<string[]>([]);
+  const iv = initialValues ?? {};
+  const [name, setName] = useState(iv.name ?? "");
+  const [email, setEmail] = useState(iv.email ?? "");
+  const [timeline, setTimeline] = useState(iv.timeline ?? "");
+  const [goal, setGoal] = useState(iv.goal ?? "");
+  const [targetFirms, setTargetFirms] = useState<string[]>(iv.targetFirms ?? []);
+  const [focusAreas, setFocusAreas] = useState<string[]>(iv.focusAreas ?? []);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,7 +58,8 @@ export function StudentSignupForm() {
         setError(data.error ?? "Something went wrong.");
         return;
       }
-      router.push("/coaches");
+      // Editing returns to the dashboard; a fresh signup goes browsing.
+      router.push(editing ? "/dashboard" : "/coaches");
       router.refresh();
     } catch {
       setError("Network error. Please try again.");
@@ -74,12 +91,16 @@ export function StudentSignupForm() {
           <input
             id="email"
             type="email"
-            className={`${inputClass} mt-1.5`}
+            className={`${inputClass} mt-1.5 ${editing ? "cursor-not-allowed bg-slate-100 text-slate-500" : ""}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@university.edu"
             required
+            readOnly={editing}
           />
+          {editing && (
+            <p className="mt-1 text-xs text-slate-400">Email can&apos;t be changed.</p>
+          )}
         </div>
       </div>
 
@@ -130,11 +151,19 @@ export function StudentSignupForm() {
       )}
 
       <button type="submit" disabled={loading} className={`${btnPrimary} w-full`}>
-        {loading ? "Creating your account…" : "Find my coach"}
+        {loading
+          ? editing
+            ? "Saving…"
+            : "Creating your account…"
+          : editing
+            ? "Save changes"
+            : "Find my coach"}
       </button>
-      <p className="text-center text-xs text-slate-400">
-        No password needed — we&apos;ll recognize you by email next time.
-      </p>
+      {!editing && (
+        <p className="text-center text-xs text-slate-400">
+          No password needed — we&apos;ll recognize you by email next time.
+        </p>
+      )}
     </form>
   );
 }
