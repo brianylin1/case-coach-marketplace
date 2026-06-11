@@ -1,16 +1,23 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. Last updated after PR #7 (Down to Case email +
-> calendar-invite branding), merged to production.
+> as the project evolves. **Last updated after PR #10 (Coach Trust MVP), merged
+> and deployed to production.**
 >
 > **Production:** live at **https://www.downtocase.com** (primary domain; the
 > apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
-> still resolves). Branch `main`, auto-deployed by Vercel. Current model =
-> timezone-correct booking (PR #3) + booking calendar invites that reuse a
-> **coach-provided meeting room** (PR #5), with **live booking email** (Resend on
-> the verified `downtocase.com` domain) branded **"Down to Case"** (PRs #6–#7).
-> **No auto-generated video** (Jitsi removed).
+> still resolves). Branch `main`, auto-deployed by Vercel. **Latest deployed
+> commit: `8076143`** (merge of PR #10; smoke-tested in prod and healthy).
+> Current model = timezone-correct booking (PR #3) + calendar invites reusing a
+> **coach-provided meeting room** (PR #5) + **live "Down to Case" booking email**
+> (Resend on the verified `downtocase.com` domain, PRs #6–#7) + a **true student
+> preferences edit form** (PR #9) + **coach trust signals & curated pricing**
+> (PR #10). Payments still **simulated**; **no auto-generated video** (Jitsi removed).
+>
+> ⚠️ **Session handoff:** PR #10 is fully deployed and validated. **Do not start
+> new feature work** without an explicit go-ahead — propose an approach first
+> (see §9). The photo-**upload** UI (Vercel Blob) is planned but **not built**;
+> only the `photoUrl` column + `Avatar` rendering + initials fallback exist.
 
 ---
 
@@ -100,10 +107,18 @@ set availability once; students book a time in a couple of clicks).
 - **Coach** — `id`, `name`, `email` (unique), `firm`, `title`, `yearsAtFirm`,
   `headline?`, `bio`, `focusAreas` (JSON string), `hourlyRate` (0 = pro bono),
   `availability?` (free text), `linkedinUrl?`, `timezone` (default `"UTC"`),
-  **reusable meeting room** (`meetingPlatform?` = teams|zoom|meet|other,
-  `meetingUrl?`, `meetingId?`, `meetingPasscode?`, `meetingInstructions?`),
-  `isActive`, `createdAt`; has `blocks[]`, `bookings[]`. **Bookable only when
-  `meetingUrl` + `meetingPlatform` are set.**
+  **trust / positioning — all optional, added PR #10**: `bestFor?` (single
+  `BEST_FOR` key; UI falls back to a phrase derived from the first focus area),
+  `casesCoached?` (`CASES_COACHED` range bucket: `0-10`/`10+`/`25+`/`50+`/`100+`),
+  `firmStatus?` (`"current"`|`"former"` at `firm`; null = unstated, never inferred),
+  `photoUrl?` (external image URL; rendered by `Avatar` with an initials fallback —
+  **no upload UI yet**); **reusable meeting room** (`meetingPlatform?` =
+  teams|zoom|meet|other, `meetingUrl?`, `meetingId?`, `meetingPasscode?`,
+  `meetingInstructions?`), `isActive`, `createdAt`; has `blocks[]`, `bookings[]`.
+  **Bookable only when `meetingUrl` + `meetingPlatform` are set.** Curated keys +
+  helpers (`bestForPhrase`, `casesCoachedLabel`, `COACH_RATES`, `rateOptionLabel`,
+  `FIRM_STATUSES`) live in `lib/constants.ts`; `Coach` is projected to a
+  client-safe `CoachView` in `lib/serialize.ts` (email never included).
 - **AvailabilityBlock** — `id`, `coachId`, `weekday` (0=Mon…6=Sun),
   `startMinute`, `endMinute`. A coach's **recurring weekly** availability (UTC).
 - **Booking** — `id`, `coachId`, `studentId`, `startTime` (concrete UTC),
@@ -129,12 +144,17 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 ## 5. Current features
 
-- **Coach onboarding** (`/signup/coach`): name, email, firm, title, years,
-  headline, bio, focus areas, rate (or pro bono), availability text, **timezone**
-  (defaults to the browser-detected IANA zone), LinkedIn, and a **required
-  "Meeting Information"** section (platform + URL, optional ID / passcode /
-  instructions). Passwordless; upsert by email. **A coach is not bookable — and
-  their availability is hidden — until a meeting room is configured.**
+- **Coach onboarding / edit** (`/signup/coach`; doubles as the prefilled edit
+  form when a coach is logged in): name, email, firm, title, years, headline,
+  bio, focus areas, a **curated hourly-rate dropdown** (`COACH_RATES`: pro bono /
+  $40–$250; a legacy off-list rate is preserved on edit), availability text,
+  **timezone**, LinkedIn, an optional **"How you coach"** block (best-for select,
+  cases-coached range, Current/Former-at-firm toggle — all clicks, no writing),
+  and a **required "Meeting Information"** section (platform + URL, optional ID /
+  passcode / instructions). Passwordless; a logged-in coach updates by session id
+  (never duplicates). **A coach is not bookable — and their availability is
+  hidden — until a meeting room is configured.** *(No profile-photo field yet —
+  photo upload is a planned follow-on.)*
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
   (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
   click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
@@ -161,8 +181,19 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Dashboards:** student = upcoming booked sessions + coach contact + profile
   summary; coach = availability grid + booked sessions (with student contact) +
   stats (hrs/week, upcoming, booked value).
-- **Profile modal** (`CoachProfilePanel`): bio, firm, role, years, focus, rate,
-  availability, LinkedIn. Reused in the calendar modal and on `/coaches/[id]`.
+- **Student preferences edit** (PR #9): the dashboard "Update preferences" link
+  opens `/signup/student` as a **true edit form** — prefilled, email read-only,
+  "Save changes" CTA, returns to `/dashboard`; the API pins a logged-in student's
+  update to their session id so changing the email can't fork a duplicate.
+- **Coach profile** (`CoachProfilePanel`; reused in the calendar/list modals and
+  on `/coaches/[id]`) — refreshed in PR #10: photo (initials fallback), name +
+  firm, a **credibility line** ("Current/Former &lt;Firm&gt; &lt;Title&gt; · N yrs"
+  when stated, else neutral), **prominent LinkedIn**, a **"Best for …"** chip, a
+  **cases-coached** chip, short bio, focus areas as pills, rate ("$X/hr · 60-min"),
+  availability. The student-facing cards (`CoachCard`, `SlotCard`), the booking
+  modal, and the calendar coach-rows carry the same concise trust signals. Every
+  field falls back gracefully — no empty sections, "Best for" derived from focus,
+  no "verified"/ratings/fake social proof.
 - **Coach-selection modal:** coaches at a given hour grouped by firm; **Sort**
   (Recommended / Lowest price / Most experience); rating placeholder; first 10 per
   firm + "Show more"; wide with a sticky header and internal scroll; mobile bottom
@@ -255,6 +286,33 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   organizer email, event times, and opaque `UID` (`booking-<id>@casecoach.app`)
   are unchanged. Sender **display name** is env-controlled via `EMAIL_FROM`.
 
+- **PR #8 — "docs: update PROJECT_STATE after PR #7"** *(merged).* Docs only.
+
+- **PR #9 — "Student preferences as a true edit form"** *(merged into `main`).*
+  `/signup/student` prefills for a logged-in student (name, email, target firms,
+  focus areas, timeline, notes; chips pre-selected); email is **read-only** in
+  edit mode; CTA is **"Save changes"**; a successful save returns to `/dashboard`
+  (fresh signups still go to `/coaches`). Server hardening: `POST /api/students`
+  pins a logged-in student's update to their **session id** and ignores any
+  submitted email, so changing the email can't create a duplicate. No schema change.
+
+- **PR #10 — "Coach Trust MVP: positioning, credibility, curated pricing"**
+  *(merged into `main` — current production, commit `8076143`).* Additive,
+  all-optional `Coach` fields `bestFor` / `casesCoached` / `firmStatus` /
+  `photoUrl` (see §4) surfaced across the student-facing UI — a "Best for …"
+  positioning line, a cases-coached signal, a Current/Former credibility line,
+  prominent LinkedIn, and photo support (initials fallback) on the profile, cards,
+  booking modal, and calendar rows — each with a graceful fallback (no empty
+  sections, no "verified"/ratings/fake social proof). The coach form gains a
+  low-friction **"How you coach"** block and a **curated rate dropdown**
+  (`COACH_RATES`, replacing the $1-step number input); `Avatar` renders an
+  `<img>` when `photoUrl` is set. Also: homepage recurring-availability copy fix.
+  **Deliberately scoped out** (after two product feedback passes): session-styles,
+  a "how sessions run" checklist, dashboard nudges, and the photo-**upload** UI
+  (kept the `photoUrl` column + rendering only — Vercel Blob upload is the planned
+  follow-on). **Untouched:** booking, availability, timezone, email/ICS,
+  meeting-room gating, auth, payments.
+
 ---
 
 ## 7. Known limitations
@@ -284,6 +342,13 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   second fails, the booking's `emailStatus` is marked `FAILED` even if the first
   was delivered. Coach-provided fields are HTML-escaped in email and RFC-escaped in
   the ICS. No reschedule/cancel updates (`METHOD:CANCEL`/`SEQUENCE`) yet.
+- **Coach trust (PR #10):** fields are **optional and self-reported** (no
+  verification). **Existing prod coaches have them empty**, so production renders
+  the **fallback** everywhere (derived "Best for", neutral credential, no
+  cases-coached chip, initials avatar) until coaches fill them in. **Photo
+  *upload* is not built** — only `photoUrl` + `Avatar` rendering + initials
+  fallback ship; there is no UI to set a photo yet (Vercel Blob upload is the
+  planned follow-on). The API still accepts a `photoUrl` (harmless, dormant).
 - **Other:** hourly slots only (no 30-min); `/api/sessions/cell` returns all
   coaches for an hour (display capped per firm at 10); prod seed/demo data is
   manual.
@@ -307,27 +372,42 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 ---
 
-## 9. Current roadmap (ranked)
+## 9. Current roadmap, bottlenecks & next priorities
 
-Done so far: ~~Timezone support (PR #3)~~ · ~~Booking calendar invites +
-coach-provided reusable meeting rooms (PR #5)~~ · ~~Booking email/invite polish +
-"Down to Case" branding (PRs #6–#7)~~ · ~~Turn on real email — Resend live in
-production on the verified `downtocase.com` domain~~. Recommended next priorities
-(confirm before building):
+**Done:** ~~Timezone (PR #3)~~ · ~~Meeting rooms + invites (PR #5)~~ ·
+~~"Down to Case" email live (PRs #6–#7)~~ · ~~Student preferences edit form
+(PR #9)~~ · ~~Coach Trust MVP — positioning, credibility, curated pricing
+(PR #10)~~.
 
-1. **Coach onboarding / supply** — a two-sided marketplace needs liquidity. Note:
-   **existing prod coaches are unbookable until they add a meeting room** —
-   prompt/migrate them — and the demo only has 8. No supply → no marketplace.
-2. **Trust signals** — firm/identity verification, LinkedIn proof, and a real
-   ratings/reviews system (replaces the placeholder).
-3. **Mobile improvements** — single-day calendar view; the current horizontal
-   scroll is a stopgap.
-4. **Payments (Stripe)** — real charges + coach payouts (Stripe Connect), behind
-   `lib/payments.ts`.
-5. **Reschedule / cancel** — booking changes with `METHOD:CANCEL`/`SEQUENCE` ICS
-   updates and re-notification.
-6. **GTM tools** — analytics, referrals, reminders, SEO. After the core loop
-   converts.
+**Current bottlenecks** (from the PR #10 production smoke test, 2026‑06‑11):
+- **Supply is the binding constraint** — production has **~1 bookable coach**
+  ("12 open sessions across 1 coach"). The trust UI only pays off with coaches to
+  compare; existing prod coaches stay unbookable until they configure a meeting room.
+- **Trust fields are empty in prod** — everything renders as the fallback until
+  coaches populate best-for / cases / current-former / photo, and there is **no
+  photo-upload UI** to capture headshots yet.
+- Payments are **simulated** (no revenue); auth is **not production-grade**
+  (passwordless, anyone with an email can sign in).
+
+**Recommended next priorities** (confirm with the operator before building):
+1. **Photo upload (Vercel Blob) + a coach "complete your profile" nudge** — the
+   planned follow-on to PR #10; activates the trust UI by getting coaches to set
+   photo / best-for / cases / current-former / meeting room. Scoped plan: add
+   `@vercel/blob`, an auth'd `app/api/coaches/photo` upload route, a
+   `<PhotoUpload>` component wired into the coach form (reuse the existing
+   `photoUrl` column — **no schema change**), provision a Blob store +
+   `BLOB_READ_WRITE_TOKEN`. Ship as a **separate PR**.
+2. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
+3. **Payments (Stripe)** — real charges + payouts (Stripe Connect) behind
+   `lib/payments.ts`, once there's booking volume.
+4. **Then:** mobile single-day calendar view; reschedule/cancel
+   (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); real ratings/reviews (replace the
+   placeholder); GTM (analytics, reminders, SEO).
+
+> 🚫 **No new feature work should be started from the session that shipped PR
+> #10** — its mandate ended at "deploy + validate PR #10 + hand off." A fresh
+> session should pick the next priority **with the operator**, propose an
+> approach, and wait for approval before coding.
 
 ---
 
