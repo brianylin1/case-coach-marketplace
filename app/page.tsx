@@ -158,7 +158,7 @@ export default async function HomePage() {
                   n={2}
                   Icon={CalendarCheck}
                   title="Set your availability"
-                  body="Add up to 5 open slots whenever you're free to coach."
+                  body="Paint your recurring weekly availability once — students book straight into it."
                 />
                 <Step
                   n={3}

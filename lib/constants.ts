@@ -50,6 +50,105 @@ export function isFocusKey(value: string): boolean {
   return value in FOCUS_LABELS;
 }
 
+// ----- Coach trust / positioning ------------------------------------------
+
+// Curated "Best for …" positioning a coach picks at signup. Single-select on
+// purpose: one sharp line students can compare across coaches. Labels are
+// lowercase phrases so they read mid-sentence after "Best for".
+export const BEST_FOR = [
+  { key: "first-rounds", label: "first-round casing fundamentals" },
+  { key: "final-rounds", label: "final-round polish & partner-style pressure" },
+  { key: "structuring-scratch", label: "structuring & frameworks from scratch" },
+  { key: "quant", label: "market sizing & mental math" },
+  { key: "pei", label: "PEI & behavioral storytelling" },
+  { key: "get-interview", label: "resume, networking & getting the interview" },
+] as const;
+
+export type BestForKey = (typeof BEST_FOR)[number]["key"];
+
+const BEST_FOR_LABELS: Record<string, string> = Object.fromEntries(
+  BEST_FOR.map((b) => [b.key, b.label]),
+);
+
+export function isBestForKey(value: string): boolean {
+  return value in BEST_FOR_LABELS;
+}
+
+// Fallback phrasing per focus area so every coach gets a "Best for …" line
+// even before they pick one (focus areas are required at signup). Derived from
+// the coach's own first focus selection — honest by construction.
+const FOCUS_BEST_FOR: Record<string, string> = {
+  structuring: "case structuring & frameworks",
+  "market-sizing": "market sizing & estimation",
+  profitability: "profitability cases",
+  "market-entry": "market entry cases",
+  ma: "M&A & due-diligence cases",
+  math: "mental math & exhibits",
+  behavioral: "behavioral / PEI prep",
+  mock: "full mock interviews",
+  networking: "resume & networking",
+};
+
+// The coach's authored positioning when set, else derived from their first
+// recognizable focus area. Null only if a coach has no known focus keys.
+export function bestForPhrase(
+  bestFor: string | null | undefined,
+  focusKeys: string[],
+): string | null {
+  if (bestFor && BEST_FOR_LABELS[bestFor]) return BEST_FOR_LABELS[bestFor];
+  for (const key of focusKeys) {
+    if (FOCUS_BEST_FOR[key]) return FOCUS_BEST_FOR[key];
+  }
+  return null;
+}
+
+// Self-reported number of candidates coached, as a coarse range bucket (never
+// an exact, unverifiable count). Optional; surfaces simply omit it when unset.
+export const CASES_COACHED = [
+  { key: "0-10", label: "Up to 10 candidates coached" },
+  { key: "10+", label: "10+ candidates coached" },
+  { key: "25+", label: "25+ candidates coached" },
+  { key: "50+", label: "50+ candidates coached" },
+  { key: "100+", label: "100+ candidates coached" },
+] as const;
+
+export type CasesCoachedKey = (typeof CASES_COACHED)[number]["key"];
+
+const CASES_COACHED_LABELS: Record<string, string> = Object.fromEntries(
+  CASES_COACHED.map((c) => [c.key, c.label]),
+);
+
+export function isCasesCoached(value: string): boolean {
+  return value in CASES_COACHED_LABELS;
+}
+
+export function casesCoachedLabel(key: string | null | undefined): string | null {
+  return (key && CASES_COACHED_LABELS[key]) || null;
+}
+
+// Curated hourly-rate options for the coach signup/edit dropdown (USD). Cleaner
+// marketplace pricing than a free-form number; 0 = pro bono. An existing
+// off-list rate is preserved on edit (the form prepends it).
+export const COACH_RATES: readonly number[] = [
+  0, 40, 50, 60, 75, 100, 125, 150, 175, 200, 250,
+];
+
+export function rateOptionLabel(rate: number): string {
+  return rate <= 0 ? "Pro bono (free)" : `$${rate}/hr`;
+}
+
+// Whether the coach is currently at `firm` or an alum. Self-reported — same
+// trust basis as firm/title — and rendered as the coach's claim, never as
+// "verified". Unset means we show the neutral wording used before this field.
+export const FIRM_STATUSES = [
+  { key: "current", label: "Current" },
+  { key: "former", label: "Former" },
+] as const;
+
+export function isFirmStatus(value: string): value is "current" | "former" {
+  return value === "current" || value === "former";
+}
+
 // Price filter buckets for the session browser. min/max are inclusive USD
 // bounds on a coach's hourly rate; null means unbounded.
 export const PRICE_BUCKETS = [

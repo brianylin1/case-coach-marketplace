@@ -9,11 +9,11 @@ import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { CoachProfilePanel } from "./CoachProfilePanel";
 import { BookingModal } from "./BookingModal";
-import { FIRMS, firmStyle, focusLabel } from "@/lib/constants";
+import { FIRMS, bestForPhrase, firmStyle } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { wallTimeToUtc } from "@/lib/timezone";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
-import type { CalendarCell, CoachView, SlotView } from "@/lib/types";
+import type { CalendarCell, SlotView } from "@/lib/types";
 
 type Day = { dayKey: string; short: string; sub: string };
 type SortKey = "recommended" | "price" | "experience";
@@ -76,7 +76,9 @@ export function SessionCalendar({
   const [sort, setSort] = useState<SortKey>("recommended");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [bookingSlot, setBookingSlot] = useState<SlotView | null>(null);
-  const [profileCoach, setProfileCoach] = useState<CoachView | null>(null);
+  // Keep the whole slot (not just the coach) so the profile modal can offer a
+  // direct "Book this time" CTA for the time the student was already looking at.
+  const [profileSlot, setProfileSlot] = useState<SlotView | null>(null);
   const [hintDismissed, setHintDismissed] = useState(false);
 
   const groups = useMemo(() => {
@@ -322,7 +324,7 @@ export function SessionCalendar({
                               }}
                               onViewProfile={() => {
                                 setSelected(null);
-                                setProfileCoach(slot.coach);
+                                setProfileSlot(slot);
                               }}
                             />
                           ))}
@@ -349,10 +351,27 @@ export function SessionCalendar({
         )}
       </Modal>
 
-      <Modal open={profileCoach !== null} onClose={() => setProfileCoach(null)}>
-        {profileCoach && (
+      <Modal open={profileSlot !== null} onClose={() => setProfileSlot(null)}>
+        {profileSlot && (
           <div className="p-6">
-            <CoachProfilePanel coach={profileCoach} />
+            <CoachProfilePanel coach={profileSlot.coach} />
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <span className="text-sm text-slate-600">
+                {profileSlot.dateLabel} · {profileSlot.timeLabel}
+              </span>
+              <button
+                type="button"
+                className={btnPrimary}
+                onClick={() => {
+                  const slot = profileSlot;
+                  setProfileSlot(null);
+                  setBookingSlot(slot);
+                }}
+              >
+                <Zap className="size-4" />
+                Book this time · {formatRate(profileSlot.coach.hourlyRate)}
+              </button>
+            </div>
           </div>
         )}
       </Modal>
@@ -401,13 +420,13 @@ function CoachRow({
   onViewProfile: () => void;
 }) {
   const c = slot.coach;
-  const focus = c.focusKeys.slice(0, 2).map(focusLabel).join(" · ");
-  const extra = c.focusKeys.length > 2 ? ` +${c.focusKeys.length - 2}` : "";
+  // One scannable differentiator per row; full focus detail is behind "View".
+  const best = bestForPhrase(c.bestFor, c.focusKeys);
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-200 px-3 py-2">
       {/* info: full row on mobile, shares the row on desktop */}
       <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-0">
-        <Avatar name={c.name} size="sm" />
+        <Avatar name={c.name} size="sm" src={c.photoUrl} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>
@@ -417,8 +436,8 @@ function CoachRow({
             </span>
           </div>
           <p className="truncate text-xs text-slate-500">
-            {c.title} · {c.yearsAtFirm}y{focus ? ` · ${focus}` : ""}
-            {extra}
+            {c.firmStatus === "current" ? "Current " : c.firmStatus === "former" ? "Former " : ""}
+            {c.title} · {c.yearsAtFirm}y{best ? ` · Best for ${best}` : ""}
           </p>
         </div>
         <span className="shrink-0 text-sm font-semibold text-slate-900">

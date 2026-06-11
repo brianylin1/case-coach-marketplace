@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
-import { FIRMS, FOCUS_AREAS, MEETING_PLATFORMS } from "@/lib/constants";
+import {
+  BEST_FOR,
+  CASES_COACHED,
+  COACH_RATES,
+  FIRMS,
+  FIRM_STATUSES,
+  FOCUS_AREAS,
+  MEETING_PLATFORMS,
+  rateOptionLabel,
+} from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
@@ -20,6 +29,9 @@ export type CoachFormValues = {
   hourlyRate: string;
   availability: string;
   linkedinUrl: string;
+  bestFor: string;
+  casesCoached: string;
+  firmStatus: string;
   meetingPlatform: string;
   meetingUrl: string;
   meetingId: string;
@@ -52,6 +64,9 @@ export function CoachSignupForm({
   const [hourlyRate, setHourlyRate] = useState(iv.hourlyRate ?? "");
   const [availability, setAvailability] = useState(iv.availability ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(iv.linkedinUrl ?? "");
+  const [bestFor, setBestFor] = useState(iv.bestFor ?? "");
+  const [casesCoached, setCasesCoached] = useState(iv.casesCoached ?? "");
+  const [firmStatus, setFirmStatus] = useState(iv.firmStatus ?? "");
   const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
   const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
   const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
@@ -99,6 +114,9 @@ export function CoachSignupForm({
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          bestFor,
+          casesCoached,
+          firmStatus,
           meetingPlatform,
           meetingUrl,
           meetingId,
@@ -125,6 +143,14 @@ export function CoachSignupForm({
   const tzOptions = COMMON_TIMEZONES.some((t) => t.value === timezone)
     ? COMMON_TIMEZONES
     : [{ value: timezone, label: timezone }, ...COMMON_TIMEZONES];
+
+  // Keep an existing off-list rate (e.g. a legacy $120) selectable so editing a
+  // coach never silently snaps their price to a curated value.
+  const rateNum = Number(hourlyRate);
+  const rateOptions =
+    hourlyRate !== "" && Number.isFinite(rateNum) && !COACH_RATES.includes(rateNum)
+      ? [rateNum, ...COACH_RATES]
+      : COACH_RATES;
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -249,20 +275,107 @@ export function CoachSignupForm({
         <ChipSelect options={FOCUS_AREAS} selected={focusAreas} onToggle={toggleFocus} />
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">How you coach</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Optional, but it helps students pick you — all clicks, no writing.
+        </p>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className={labelClass} htmlFor="bestFor">
+              What are you best for?
+            </label>
+            <select
+              id="bestFor"
+              className={`${inputClass} mt-1.5`}
+              value={bestFor}
+              onChange={(e) => setBestFor(e.target.value)}
+            >
+              <option value="">Auto — use my top focus area</option>
+              {BEST_FOR.map((b) => (
+                <option key={b.key} value={b.key}>
+                  Best for {b.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              The one thing you most want to be booked for — students see it as
+              “Best for …” on your card.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="casesCoached">
+              How many candidates have you coached?
+            </label>
+            <select
+              id="casesCoached"
+              className={`${inputClass} mt-1.5`}
+              value={casesCoached}
+              onChange={(e) => setCasesCoached(e.target.value)}
+            >
+              <option value="">Prefer not to say</option>
+              {CASES_COACHED.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              A rough range, shown as a trust signal. Leave blank to hide it.
+            </p>
+          </div>
+          <div>
+            <span className={labelClass}>
+              Are you currently at {firm || "your firm"}?
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {FIRM_STATUSES.map((s) => {
+                const active = firmStatus === s.key;
+                return (
+                  <button
+                    type="button"
+                    key={s.key}
+                    aria-pressed={active}
+                    onClick={() => setFirmStatus(active ? "" : s.key)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      active
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Lets your profile say “Current …” or “Former …” before your firm
+              and title. Tap again to clear.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass} htmlFor="rate">
             Hourly rate (USD)
           </label>
-          <input
+          <select
             id="rate"
-            type="number"
-            min={0}
             className={`${inputClass} mt-1.5`}
             value={hourlyRate}
             onChange={(e) => setHourlyRate(e.target.value)}
-            placeholder="0 = pro bono"
-          />
+          >
+            <option value="" disabled>
+              Select a rate…
+            </option>
+            {rateOptions.map((r) => (
+              <option key={r} value={r}>
+                {rateOptionLabel(r)}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass} htmlFor="availability">

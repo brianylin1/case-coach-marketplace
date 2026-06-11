@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { ExternalLink, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
-import { FocusTag } from "./FocusTag";
+import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
 import { formatRate, parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
@@ -11,45 +12,67 @@ type CoachLike = {
   firm: string;
   title: string;
   yearsAtFirm: number;
-  headline: string | null;
   focusAreas: string;
   hourlyRate: number;
+  bestFor: string | null;
+  firmStatus: string | null;
+  casesCoached: string | null;
+  photoUrl: string | null;
+  linkedinUrl: string | null;
 };
 
+// The whole card navigates to the coach page via a stretched overlay link, so
+// the LinkedIn link can sit on top as a separate, valid anchor (no nested <a>).
 export function CoachCard({ coach }: { coach: CoachLike }) {
-  const focus = parseList(coach.focusAreas);
+  const best = bestForPhrase(coach.bestFor, parseList(coach.focusAreas));
+  const cases = casesCoachedLabel(coach.casesCoached);
+  const statusWord =
+    coach.firmStatus === "current"
+      ? "Current"
+      : coach.firmStatus === "former"
+        ? "Former"
+        : null;
   return (
-    <Link
-      href={`/coaches/${coach.id}`}
-      className={`${cardClass} group flex flex-col gap-4 p-5 transition hover:-translate-y-0.5 hover:shadow-md`}
+    <div
+      className={`${cardClass} group relative flex flex-col gap-3 p-5 transition hover:-translate-y-0.5 hover:shadow-md`}
     >
       <div className="flex items-start gap-3">
-        <Avatar name={coach.name} />
+        <Avatar name={coach.name} src={coach.photoUrl} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <h3 className="truncate font-semibold text-slate-900">{coach.name}</h3>
             <FirmBadge firm={coach.firm} />
           </div>
           <p className="text-sm text-slate-500">
+            {statusWord ? `${statusWord} ` : ""}
             {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
           </p>
         </div>
       </div>
 
-      {coach.headline && (
-        <p className="line-clamp-2 text-sm text-slate-600">{coach.headline}</p>
+      {best && (
+        <p className="text-xs font-semibold text-indigo-600">Best for {best}</p>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
-        {focus.slice(0, 3).map((f) => (
-          <FocusTag key={f} focusKey={f} />
-        ))}
-        {focus.length > 3 && (
-          <span className="self-center text-xs text-slate-400">
-            +{focus.length - 3} more
-          </span>
-        )}
-      </div>
+      {cases && (
+        <p className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+          <Users className="size-3.5 text-slate-400" />
+          {cases}
+        </p>
+      )}
+
+      {coach.linkedinUrl && (
+        <a
+          href={coach.linkedinUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${coach.name} on LinkedIn`}
+          className="relative z-10 inline-flex w-fit items-center gap-1 text-xs font-medium text-slate-400 hover:text-indigo-600"
+        >
+          <ExternalLink className="size-3.5" />
+          LinkedIn
+        </a>
+      )}
 
       <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
         <span className="text-sm font-semibold text-slate-900">
@@ -59,6 +82,13 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
           View times →
         </span>
       </div>
-    </Link>
+
+      {/* Stretched overlay turns the whole card into the profile link. */}
+      <Link
+        href={`/coaches/${coach.id}`}
+        aria-label={`View ${coach.name}'s profile and times`}
+        className="absolute inset-0 z-0"
+      />
+    </div>
   );
 }

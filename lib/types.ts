@@ -14,6 +14,10 @@ export type CoachView = {
   hourlyRate: number;
   availability: string | null;
   linkedinUrl: string | null;
+  bestFor: string | null; // BEST_FOR key; fallback derived from focusKeys
+  casesCoached: string | null; // CASES_COACHED bucket key; omitted when unset
+  firmStatus: string | null; // "current" | "former" | null (unstated)
+  photoUrl: string | null; // external image URL; falls back to initials avatar
 };
 
 // A bookable 60-min session, generated on the fly from a coach's availability.

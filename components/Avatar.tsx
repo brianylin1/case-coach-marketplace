@@ -12,9 +12,11 @@ const COLORS = [
 export function Avatar({
   name,
   size = "md",
+  src,
 }: {
   name: string;
   size?: "sm" | "md" | "lg";
+  src?: string | null;
 }) {
   const index =
     [...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % COLORS.length;
@@ -24,6 +26,16 @@ export function Avatar({
       : size === "sm"
         ? "size-9 text-xs"
         : "size-11 text-sm";
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- coach-supplied external URL; next/image would need per-host remotePatterns config, and we deliberately keep this display-only (no upload/storage).
+      <img
+        src={src}
+        alt={name}
+        className={`${dimensions} shrink-0 rounded-full bg-slate-100 object-cover`}
+      />
+    );
+  }
   return (
     <span
       className={`inline-flex ${dimensions} shrink-0 items-center justify-center rounded-full font-semibold ${COLORS[index]}`}

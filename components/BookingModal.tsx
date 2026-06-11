@@ -7,12 +7,14 @@ import {
   CalendarClock,
   CheckCircle2,
   CreditCard,
+  ExternalLink,
   ShieldCheck,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { MeetingActions, type BookingMeetingView } from "./MeetingActions";
+import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -40,6 +42,17 @@ export function BookingModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BookedResult | null>(null);
+
+  // Concise trust signals for the review step (all optional).
+  const coach = slot?.coach;
+  const coachBestFor = coach ? bestForPhrase(coach.bestFor, coach.focusKeys) : null;
+  const coachCases = coach ? casesCoachedLabel(coach.casesCoached) : null;
+  const coachStatus =
+    coach?.firmStatus === "current"
+      ? "Current "
+      : coach?.firmStatus === "former"
+        ? "Former "
+        : "";
 
   function close() {
     const booked = Boolean(result);
@@ -83,19 +96,48 @@ export function BookingModal({
 
           <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center gap-3">
-              <Avatar name={slot.coach.name} />
-              <div>
+              <Avatar name={slot.coach.name} src={slot.coach.photoUrl} />
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-slate-900">{slot.coach.name}</p>
                   <FirmBadge firm={slot.coach.firm} />
                 </div>
-                <p className="text-sm text-slate-500">{slot.coach.title}</p>
+                <p className="text-sm text-slate-500">
+                  {coachStatus}
+                  {slot.coach.title} · {slot.coach.yearsAtFirm} yr
+                  {slot.coach.yearsAtFirm === 1 ? "" : "s"}
+                </p>
               </div>
             </div>
+            {(coachBestFor || coachCases) && (
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                {coachBestFor && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 px-2 py-1 font-medium text-indigo-700">
+                    Best for {coachBestFor}
+                  </span>
+                )}
+                {coachCases && (
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 font-medium text-slate-600">
+                    {coachCases}
+                  </span>
+                )}
+              </div>
+            )}
             <p className="mt-3 flex items-center gap-2 text-sm text-slate-700">
               <CalendarClock className="size-4 text-slate-400" />
               {slot.dateLabel} · {slot.timeLabel} · {slot.durationMins} min
             </p>
+            {slot.coach.linkedinUrl && (
+              <a
+                href={slot.coach.linkedinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline"
+              >
+                <ExternalLink className="size-3.5" />
+                LinkedIn
+              </a>
+            )}
           </div>
 
           {isStudent ? (
