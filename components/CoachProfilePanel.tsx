@@ -1,23 +1,18 @@
-import { CalendarClock, Check, ExternalLink, Target } from "lucide-react";
+import { CalendarClock, ExternalLink, Target, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
-import {
-  bestForPhrase,
-  focusDescription,
-  focusLabel,
-  sessionStyleBlurb,
-  sessionStyleLabel,
-} from "@/lib/constants";
+import { FocusTag } from "./FocusTag";
+import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import type { CoachView } from "@/lib/types";
 
 // Presentational coach profile, reused in the session-browser modal and on the
 // standalone coach page. No hooks, so it renders fine in both server and client
-// trees.
+// trees. Every trust signal is optional — absent ones simply don't render.
 export function CoachProfilePanel({ coach }: { coach: CoachView }) {
   const years = `${coach.yearsAtFirm} yr${coach.yearsAtFirm === 1 ? "" : "s"}`;
-  // Credibility line: claim current/former only when the coach said so;
-  // otherwise keep the neutral wording used before firmStatus existed.
+  // Claim "Current/Former <Firm>" only when the coach stated it; otherwise keep
+  // the neutral wording used before firmStatus existed. Never inferred.
   const statusWord =
     coach.firmStatus === "current"
       ? "Current"
@@ -29,11 +24,12 @@ export function CoachProfilePanel({ coach }: { coach: CoachView }) {
       ? `${statusWord} ${coach.firm} ${coach.title} · ${years}`
       : `${coach.title} · ${years} at ${coach.firm}`;
   const bestFor = bestForPhrase(coach.bestFor, coach.focusKeys);
+  const cases = casesCoachedLabel(coach.casesCoached);
 
   return (
     <div>
       <div className="flex items-start gap-4">
-        <Avatar name={coach.name} size="lg" />
+        <Avatar name={coach.name} size="lg" src={coach.photoUrl} />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-bold text-slate-900">{coach.name}</h2>
@@ -45,7 +41,7 @@ export function CoachProfilePanel({ coach }: { coach: CoachView }) {
               href={coach.linkedinUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline"
+              className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"
             >
               <ExternalLink className="size-3.5" />
               LinkedIn
@@ -57,61 +53,39 @@ export function CoachProfilePanel({ coach }: { coach: CoachView }) {
         </div>
       </div>
 
-      {bestFor && (
-        <p className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700">
-          <Target className="size-4 shrink-0" />
-          Best for {bestFor}
-        </p>
+      {(bestFor || cases) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {bestFor && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700">
+              <Target className="size-4 shrink-0" />
+              Best for {bestFor}
+            </span>
+          )}
+          {cases && (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700">
+              <Users className="size-4 shrink-0 text-slate-400" />
+              {cases}
+            </span>
+          )}
+        </div>
       )}
 
       <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-700">
         {coach.bio}
       </p>
 
-      <div className="mt-5">
+      <div className="mt-4">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-          What we&apos;ll work on
+          Focus areas
         </h3>
-        <ul className="mt-2 space-y-1.5">
-          {coach.focusKeys.map((key) => {
-            const description = focusDescription(key);
-            return (
-              <li key={key} className="text-sm">
-                <span className="font-medium text-slate-800">{focusLabel(key)}</span>
-                {description && (
-                  <span className="text-slate-500"> — {description}</span>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {coach.focusKeys.map((key) => (
+            <FocusTag key={key} focusKey={key} />
+          ))}
+        </div>
       </div>
 
-      {coach.sessionStyleKeys.length > 0 && (
-        <div className="mt-5">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            How sessions run
-          </h3>
-          <ul className="mt-2 space-y-1.5">
-            {coach.sessionStyleKeys.map((key) => {
-              const blurb = sessionStyleBlurb(key);
-              return (
-                <li key={key} className="flex items-start gap-2 text-sm">
-                  <Check className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                  <span>
-                    <span className="font-medium text-slate-800">
-                      {sessionStyleLabel(key)}
-                    </span>
-                    {blurb && <span className="text-slate-500"> — {blurb}</span>}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
         <span>
           <span className="text-base font-semibold text-slate-900">
             {formatRate(coach.hourlyRate)}

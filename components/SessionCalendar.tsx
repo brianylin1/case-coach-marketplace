@@ -426,7 +426,7 @@ function CoachRow({
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-200 px-3 py-2">
       {/* info: full row on mobile, shares the row on desktop */}
       <div className="flex min-w-0 flex-1 basis-full items-center gap-3 sm:basis-0">
-        <Avatar name={c.name} size="sm" />
+        <Avatar name={c.name} size="sm" src={c.photoUrl} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>
@@ -436,6 +436,7 @@ function CoachRow({
             </span>
           </div>
           <p className="truncate text-xs text-slate-500">
+            {c.firmStatus === "current" ? "Current " : c.firmStatus === "former" ? "Former " : ""}
             {c.title} · {c.yearsAtFirm}y{best ? ` · Best for ${best}` : ""}
           </p>
         </div>

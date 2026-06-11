@@ -6,11 +6,11 @@ import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
 import {
   BEST_FOR,
+  CASES_COACHED,
   FIRMS,
   FIRM_STATUSES,
   FOCUS_AREAS,
   MEETING_PLATFORMS,
-  SESSION_STYLES,
 } from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
@@ -28,8 +28,9 @@ export type CoachFormValues = {
   availability: string;
   linkedinUrl: string;
   bestFor: string;
-  sessionStyles: string[];
+  casesCoached: string;
   firmStatus: string;
+  photoUrl: string;
   meetingPlatform: string;
   meetingUrl: string;
   meetingId: string;
@@ -63,8 +64,9 @@ export function CoachSignupForm({
   const [availability, setAvailability] = useState(iv.availability ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(iv.linkedinUrl ?? "");
   const [bestFor, setBestFor] = useState(iv.bestFor ?? "");
-  const [sessionStyles, setSessionStyles] = useState<string[]>(iv.sessionStyles ?? []);
+  const [casesCoached, setCasesCoached] = useState(iv.casesCoached ?? "");
   const [firmStatus, setFirmStatus] = useState(iv.firmStatus ?? "");
+  const [photoUrl, setPhotoUrl] = useState(iv.photoUrl ?? "");
   const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
   const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
   const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
@@ -84,12 +86,6 @@ export function CoachSignupForm({
 
   function toggleFocus(key: string) {
     setFocusAreas((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
-  }
-
-  function toggleSessionStyle(key: string) {
-    setSessionStyles((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   }
@@ -119,8 +115,9 @@ export function CoachSignupForm({
           availability,
           linkedinUrl,
           bestFor,
-          sessionStyles,
+          casesCoached,
           firmStatus,
+          photoUrl,
           meetingPlatform,
           meetingUrl,
           meetingId,
@@ -300,13 +297,25 @@ export function CoachSignupForm({
             </p>
           </div>
           <div>
-            <label className={labelClass}>How do you run sessions?</label>
-            <p className="mb-2 mt-1 text-sm text-slate-500">Pick any that apply.</p>
-            <ChipSelect
-              options={SESSION_STYLES.map((s) => ({ key: s.key, label: s.label }))}
-              selected={sessionStyles}
-              onToggle={toggleSessionStyle}
-            />
+            <label className={labelClass} htmlFor="casesCoached">
+              How many candidates have you coached?
+            </label>
+            <select
+              id="casesCoached"
+              className={`${inputClass} mt-1.5`}
+              value={casesCoached}
+              onChange={(e) => setCasesCoached(e.target.value)}
+            >
+              <option value="">Prefer not to say</option>
+              {CASES_COACHED.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              A rough range, shown as a trust signal. Leave blank to hide it.
+            </p>
           </div>
           <div>
             <span className={labelClass}>
@@ -402,6 +411,22 @@ export function CoachSignupForm({
           onChange={(e) => setLinkedinUrl(e.target.value)}
           placeholder="https://www.linkedin.com/in/…"
         />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="photoUrl">
+          Profile photo URL <span className="font-normal text-slate-400">(optional)</span>
+        </label>
+        <input
+          id="photoUrl"
+          className={`${inputClass} mt-1.5`}
+          value={photoUrl}
+          onChange={(e) => setPhotoUrl(e.target.value)}
+          placeholder="https://…/headshot.jpg"
+        />
+        <p className="mt-1 text-xs text-slate-400">
+          Paste a link to a headshot. Leave blank to use your initials.
+        </p>
       </div>
 
       <div

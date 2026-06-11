@@ -6,11 +6,11 @@ import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
 import {
   isBestForKey,
+  isCasesCoached,
   isFirm,
   isFirmStatus,
   isFocusKey,
   isMeetingPlatform,
-  isSessionStyleKey,
 } from "@/lib/constants";
 
 // Create (or update) a coach profile and sign them in. Idempotent on email.
@@ -36,9 +36,12 @@ export async function POST(request: Request) {
   // Trust/positioning — all optional; unknown keys are dropped, not rejected.
   const bestForRaw = str(body.bestFor, 40);
   const bestFor = isBestForKey(bestForRaw) ? bestForRaw : null;
-  const sessionStyles = strList(body.sessionStyles).filter(isSessionStyleKey);
+  const casesCoachedRaw = str(body.casesCoached, 10);
+  const casesCoached = isCasesCoached(casesCoachedRaw) ? casesCoachedRaw : null;
   const firmStatusRaw = str(body.firmStatus, 10);
   const firmStatus = isFirmStatus(firmStatusRaw) ? firmStatusRaw : null;
+  const photoUrlRaw = str(body.photoUrl, 500);
+  const photoUrl = /^https?:\/\/\S+$/i.test(photoUrlRaw) ? photoUrlRaw : null;
   const timezoneRaw = str(body.timezone, 64);
   const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
   // Coach-provided meeting room. A coach is bookable only once both a valid
@@ -82,8 +85,9 @@ export async function POST(request: Request) {
     availability,
     linkedinUrl,
     bestFor,
-    sessionStyles: serializeList(sessionStyles),
+    casesCoached,
     firmStatus,
+    photoUrl,
     timezone,
     meetingPlatform,
     meetingUrl,

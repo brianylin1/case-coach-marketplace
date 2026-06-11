@@ -17,8 +17,9 @@ const coaches = [
     availability: "Weeknights & Sunday mornings (ET)",
     linkedinUrl: "https://www.linkedin.com/in/example-maya",
     bestFor: "structuring-scratch",
-    sessionStyles: ["live-case", "frameworks", "full-mock"],
+    casesCoached: "50+",
     firmStatus: "former",
+    photoUrl: null as string | null,
     timezone: "America/New_York",
     meetingPlatform: "teams",
     meetingUrl: "https://teams.microsoft.com/l/meetup-join/maya-chen-casecoach",
@@ -40,8 +41,9 @@ const coaches = [
     availability: "Weekday mornings (London)",
     linkedinUrl: null,
     bestFor: "quant",
-    sessionStyles: ["drills", "live-case"],
+    casesCoached: "25+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "Europe/London",
     meetingPlatform: "zoom",
     meetingUrl: "https://zoom.us/j/5559876543",
@@ -62,8 +64,9 @@ const coaches = [
     availability: "Thursday evenings & Saturdays (IST)",
     linkedinUrl: "https://www.linkedin.com/in/example-priya",
     bestFor: "final-rounds",
-    sessionStyles: ["live-case", "full-mock"],
+    casesCoached: "50+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "Asia/Kolkata",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/pri-yana-bcg",
@@ -82,8 +85,9 @@ const coaches = [
     availability: "Tue/Thu evenings & Sunday afternoons (PT)",
     linkedinUrl: null,
     bestFor: "first-rounds",
-    sessionStyles: ["full-mock", "drills"],
+    casesCoached: "10+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "America/Los_Angeles",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/liam-walsh-mck",
@@ -102,8 +106,9 @@ const coaches = [
     availability: "Tuesday evenings & Sunday mornings (CET)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
     bestFor: "final-rounds",
-    sessionStyles: ["full-mock", "live-case"],
+    casesCoached: "100+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "Europe/Paris",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/abc-defg-hij",
@@ -122,8 +127,9 @@ const coaches = [
     availability: "Mon/Wed/Fri midday (SGT)",
     linkedinUrl: null,
     bestFor: "first-rounds",
-    sessionStyles: ["live-case", "drills"],
+    casesCoached: "25+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "Asia/Singapore",
     meetingPlatform: "zoom",
     meetingUrl: "https://zoom.us/j/5550112233",
@@ -143,8 +149,9 @@ const coaches = [
     availability: "Weekend mornings (CT)",
     linkedinUrl: "https://www.linkedin.com/in/example-amara",
     bestFor: "pei",
-    sessionStyles: ["pei-stories", "full-mock"],
+    casesCoached: "50+",
     firmStatus: "current",
+    photoUrl: null as string | null,
     timezone: "America/Chicago",
     meetingPlatform: "teams",
     meetingUrl: "https://teams.microsoft.com/l/meetup-join/amara-diallo-casecoach",
@@ -163,11 +170,12 @@ const coaches = [
     hourlyRate: 75,
     availability: "Tuesday & Thursday evenings (CET)",
     linkedinUrl: null,
-    // Intentionally no bestFor / sessionStyles / firmStatus: Tom exercises the
-    // fallback rendering for pre-existing coaches who never set them.
-    bestFor: null,
-    sessionStyles: [] as string[],
-    firmStatus: null,
+    // Intentionally no bestFor / casesCoached / firmStatus / photoUrl: Tom
+    // exercises the fallback rendering for coaches who never set them.
+    bestFor: null as string | null,
+    casesCoached: null as string | null,
+    firmStatus: null as string | null,
+    photoUrl: null as string | null,
     timezone: "Europe/Berlin",
     blocks: [[1, 17, 20], [3, 17, 20]],
   },
@@ -209,12 +217,11 @@ async function main() {
 
   let blockCount = 0;
   const createdCoaches = await Promise.all(
-    coaches.map(async ({ blocks, focusAreas, sessionStyles, ...rest }) => {
+    coaches.map(async ({ blocks, focusAreas, ...rest }) => {
       const coach = await prisma.coach.create({
         data: {
           ...rest,
           focusAreas: serializeList(focusAreas),
-          sessionStyles: serializeList(sessionStyles),
         },
       });
       const rows = toBlockRows(coach.id, blocks);

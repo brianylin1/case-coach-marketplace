@@ -102,50 +102,28 @@ export function bestForPhrase(
   return null;
 }
 
-// One-line, student-friendly description per focus area. Describes the skill,
-// never the coach's performance, so profiles can't overclaim.
-const FOCUS_DESCRIPTIONS: Record<string, string> = {
-  structuring: "issue trees and frameworks that hold up under pressure",
-  "market-sizing": "sizing logic and assumptions you can defend",
-  profitability: "diagnosing revenue and margin problems quickly",
-  "market-entry": "clear go/no-go logic for new markets",
-  ma: "deal logic, synergies, and diligence-style thinking",
-  math: "fast, accurate quant and exhibit reads",
-  behavioral: "structured, memorable PEI and fit stories",
-  mock: "end-to-end reps under realistic interview conditions",
-  networking: "a resume and outreach approach that gets interviews",
-};
-
-export function focusDescription(key: string): string | null {
-  return FOCUS_DESCRIPTIONS[key] ?? null;
-}
-
-// How a coach runs sessions (multi-select at signup). Blurbs are lowercase
-// fragments rendered after an em dash.
-export const SESSION_STYLES = [
-  { key: "live-case", label: "Live case practice", blurb: "work cases together with feedback as you go" },
-  { key: "drills", label: "Targeted drills", blurb: "focused reps on math, structuring, or exhibits" },
-  { key: "full-mock", label: "Full mock interviews", blurb: "a realistic end-to-end interview, then a debrief" },
-  { key: "frameworks", label: "Framework & structure coaching", blurb: "build structures that hold up under pressure" },
-  { key: "pei-stories", label: "Behavioral / PEI coaching", blurb: "shape and stress-test your story bank" },
-  { key: "resume-review", label: "Resume & networking review", blurb: "sharpen the materials and outreach that get interviews" },
+// Self-reported number of candidates coached, as a coarse range bucket (never
+// an exact, unverifiable count). Optional; surfaces simply omit it when unset.
+export const CASES_COACHED = [
+  { key: "0-10", label: "Up to 10 candidates coached" },
+  { key: "10+", label: "10+ candidates coached" },
+  { key: "25+", label: "25+ candidates coached" },
+  { key: "50+", label: "50+ candidates coached" },
+  { key: "100+", label: "100+ candidates coached" },
 ] as const;
 
-export type SessionStyleKey = (typeof SESSION_STYLES)[number]["key"];
+export type CasesCoachedKey = (typeof CASES_COACHED)[number]["key"];
 
-const SESSION_STYLE_BY_KEY: Record<string, { label: string; blurb: string }> =
-  Object.fromEntries(SESSION_STYLES.map((s) => [s.key, { label: s.label, blurb: s.blurb }]));
+const CASES_COACHED_LABELS: Record<string, string> = Object.fromEntries(
+  CASES_COACHED.map((c) => [c.key, c.label]),
+);
 
-export function isSessionStyleKey(value: string): boolean {
-  return value in SESSION_STYLE_BY_KEY;
+export function isCasesCoached(value: string): boolean {
+  return value in CASES_COACHED_LABELS;
 }
 
-export function sessionStyleLabel(key: string): string {
-  return SESSION_STYLE_BY_KEY[key]?.label ?? key;
-}
-
-export function sessionStyleBlurb(key: string): string | null {
-  return SESSION_STYLE_BY_KEY[key]?.blurb ?? null;
+export function casesCoachedLabel(key: string | null | undefined): string | null {
+  return (key && CASES_COACHED_LABELS[key]) || null;
 }
 
 // Whether the coach is currently at `firm` or an alum. Self-reported — same

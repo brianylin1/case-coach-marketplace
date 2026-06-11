@@ -1,8 +1,7 @@
-import { Clock, Zap } from "lucide-react";
+import { Clock, ExternalLink, Users, Zap } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
-import { FocusTag } from "./FocusTag";
-import { bestForPhrase } from "@/lib/constants";
+import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, cardClass } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -20,6 +19,9 @@ export function SlotCard({
 }) {
   const c = slot.coach;
   const best = bestForPhrase(c.bestFor, c.focusKeys);
+  const cases = casesCoachedLabel(c.casesCoached);
+  const statusWord =
+    c.firmStatus === "current" ? "Current " : c.firmStatus === "former" ? "Former " : "";
   return (
     <div
       role="button"
@@ -45,34 +47,45 @@ export function SlotCard({
       </div>
 
       <div className="flex items-center gap-2.5">
-        <Avatar name={c.name} />
+        <Avatar name={c.name} src={c.photoUrl} />
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-900">{c.name}</p>
             <FirmBadge firm={c.firm} />
           </div>
           <p className="truncate text-xs text-slate-500">
+            {statusWord}
             {c.title} · {c.yearsAtFirm} yr{c.yearsAtFirm === 1 ? "" : "s"}
           </p>
         </div>
       </div>
 
       {best && (
-        <p className="truncate text-xs font-medium text-indigo-600">
-          Best for {best}
-        </p>
+        <p className="truncate text-xs font-medium text-indigo-600">Best for {best}</p>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
-        {c.focusKeys.slice(0, 3).map((key) => (
-          <FocusTag key={key} focusKey={key} />
-        ))}
-        {c.focusKeys.length > 3 && (
-          <span className="self-center text-xs text-slate-400">
-            +{c.focusKeys.length - 3}
-          </span>
-        )}
-      </div>
+      {(cases || c.linkedinUrl) && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+          {cases && (
+            <span className="inline-flex items-center gap-1.5">
+              <Users className="size-3.5 text-slate-400" />
+              {cases}
+            </span>
+          )}
+          {c.linkedinUrl && (
+            <a
+              href={c.linkedinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 font-medium text-slate-400 hover:text-indigo-600"
+            >
+              <ExternalLink className="size-3.5" />
+              LinkedIn
+            </a>
+          )}
+        </div>
+      )}
 
       <button
         onClick={(e) => {
