@@ -61,15 +61,6 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
         </p>
       )}
 
-      <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
-        <span className="text-sm font-semibold text-slate-900">
-          {formatRate(coach.hourlyRate)}
-        </span>
-        <span className="text-sm font-medium text-indigo-600 group-hover:underline">
-          View times →
-        </span>
-      </div>
-
       {coach.linkedinUrl && (
         <a
           href={coach.linkedinUrl}
@@ -82,6 +73,15 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
           LinkedIn
         </a>
       )}
+
+      <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
+        <span className="text-sm font-semibold text-slate-900">
+          {formatRate(coach.hourlyRate)}
+        </span>
+        <span className="text-sm font-medium text-indigo-600 group-hover:underline">
+          View times →
+        </span>
+      </div>
 
       {/* Stretched overlay turns the whole card into the profile link. */}
       <Link
