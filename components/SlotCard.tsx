@@ -2,6 +2,7 @@ import { Clock, Zap } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { FocusTag } from "./FocusTag";
+import { bestForPhrase } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, cardClass } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -18,6 +19,7 @@ export function SlotCard({
   onBook: () => void;
 }) {
   const c = slot.coach;
+  const best = bestForPhrase(c.bestFor, c.focusKeys);
   return (
     <div
       role="button"
@@ -54,6 +56,12 @@ export function SlotCard({
           </p>
         </div>
       </div>
+
+      {best && (
+        <p className="truncate text-xs font-medium text-indigo-600">
+          Best for {best}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-1.5">
         {c.focusKeys.slice(0, 3).map((key) => (

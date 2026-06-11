@@ -16,6 +16,9 @@ const coaches = [
     hourlyRate: 120,
     availability: "Weeknights & Sunday mornings (ET)",
     linkedinUrl: "https://www.linkedin.com/in/example-maya",
+    bestFor: "structuring-scratch",
+    sessionStyles: ["live-case", "frameworks", "full-mock"],
+    firmStatus: "former",
     timezone: "America/New_York",
     meetingPlatform: "teams",
     meetingUrl: "https://teams.microsoft.com/l/meetup-join/maya-chen-casecoach",
@@ -36,6 +39,9 @@ const coaches = [
     hourlyRate: 90,
     availability: "Weekday mornings (London)",
     linkedinUrl: null,
+    bestFor: "quant",
+    sessionStyles: ["drills", "live-case"],
+    firmStatus: "current",
     timezone: "Europe/London",
     meetingPlatform: "zoom",
     meetingUrl: "https://zoom.us/j/5559876543",
@@ -55,6 +61,9 @@ const coaches = [
     hourlyRate: 140,
     availability: "Thursday evenings & Saturdays (IST)",
     linkedinUrl: "https://www.linkedin.com/in/example-priya",
+    bestFor: "final-rounds",
+    sessionStyles: ["live-case", "full-mock"],
+    firmStatus: "current",
     timezone: "Asia/Kolkata",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/pri-yana-bcg",
@@ -72,6 +81,9 @@ const coaches = [
     hourlyRate: 0,
     availability: "Tue/Thu evenings & Sunday afternoons (PT)",
     linkedinUrl: null,
+    bestFor: "first-rounds",
+    sessionStyles: ["full-mock", "drills"],
+    firmStatus: "current",
     timezone: "America/Los_Angeles",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/liam-walsh-mck",
@@ -89,6 +101,9 @@ const coaches = [
     hourlyRate: 160,
     availability: "Tuesday evenings & Sunday mornings (CET)",
     linkedinUrl: "https://www.linkedin.com/in/example-sofia",
+    bestFor: "final-rounds",
+    sessionStyles: ["full-mock", "live-case"],
+    firmStatus: "current",
     timezone: "Europe/Paris",
     meetingPlatform: "meet",
     meetingUrl: "https://meet.google.com/abc-defg-hij",
@@ -106,6 +121,9 @@ const coaches = [
     hourlyRate: 85,
     availability: "Mon/Wed/Fri midday (SGT)",
     linkedinUrl: null,
+    bestFor: "first-rounds",
+    sessionStyles: ["live-case", "drills"],
+    firmStatus: "current",
     timezone: "Asia/Singapore",
     meetingPlatform: "zoom",
     meetingUrl: "https://zoom.us/j/5550112233",
@@ -124,6 +142,9 @@ const coaches = [
     hourlyRate: 130,
     availability: "Weekend mornings (CT)",
     linkedinUrl: "https://www.linkedin.com/in/example-amara",
+    bestFor: "pei",
+    sessionStyles: ["pei-stories", "full-mock"],
+    firmStatus: "current",
     timezone: "America/Chicago",
     meetingPlatform: "teams",
     meetingUrl: "https://teams.microsoft.com/l/meetup-join/amara-diallo-casecoach",
@@ -142,6 +163,11 @@ const coaches = [
     hourlyRate: 75,
     availability: "Tuesday & Thursday evenings (CET)",
     linkedinUrl: null,
+    // Intentionally no bestFor / sessionStyles / firmStatus: Tom exercises the
+    // fallback rendering for pre-existing coaches who never set them.
+    bestFor: null,
+    sessionStyles: [] as string[],
+    firmStatus: null,
     timezone: "Europe/Berlin",
     blocks: [[1, 17, 20], [3, 17, 20]],
   },
@@ -183,9 +209,13 @@ async function main() {
 
   let blockCount = 0;
   const createdCoaches = await Promise.all(
-    coaches.map(async ({ blocks, focusAreas, ...rest }) => {
+    coaches.map(async ({ blocks, focusAreas, sessionStyles, ...rest }) => {
       const coach = await prisma.coach.create({
-        data: { ...rest, focusAreas: serializeList(focusAreas) },
+        data: {
+          ...rest,
+          focusAreas: serializeList(focusAreas),
+          sessionStyles: serializeList(sessionStyles),
+        },
       });
       const rows = toBlockRows(coach.id, blocks);
       await prisma.availabilityBlock.createMany({ data: rows });

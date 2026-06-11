@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle } from "lucide-react";
 import { ChipSelect } from "./ChipSelect";
-import { FIRMS, FOCUS_AREAS, MEETING_PLATFORMS } from "@/lib/constants";
+import {
+  BEST_FOR,
+  FIRMS,
+  FIRM_STATUSES,
+  FOCUS_AREAS,
+  MEETING_PLATFORMS,
+  SESSION_STYLES,
+} from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
@@ -20,6 +27,9 @@ export type CoachFormValues = {
   hourlyRate: string;
   availability: string;
   linkedinUrl: string;
+  bestFor: string;
+  sessionStyles: string[];
+  firmStatus: string;
   meetingPlatform: string;
   meetingUrl: string;
   meetingId: string;
@@ -52,6 +62,9 @@ export function CoachSignupForm({
   const [hourlyRate, setHourlyRate] = useState(iv.hourlyRate ?? "");
   const [availability, setAvailability] = useState(iv.availability ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(iv.linkedinUrl ?? "");
+  const [bestFor, setBestFor] = useState(iv.bestFor ?? "");
+  const [sessionStyles, setSessionStyles] = useState<string[]>(iv.sessionStyles ?? []);
+  const [firmStatus, setFirmStatus] = useState(iv.firmStatus ?? "");
   const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
   const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
   const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
@@ -71,6 +84,12 @@ export function CoachSignupForm({
 
   function toggleFocus(key: string) {
     setFocusAreas((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
+  }
+
+  function toggleSessionStyle(key: string) {
+    setSessionStyles((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
     );
   }
@@ -99,6 +118,9 @@ export function CoachSignupForm({
           hourlyRate: Number(hourlyRate) || 0,
           availability,
           linkedinUrl,
+          bestFor,
+          sessionStyles,
+          firmStatus,
           meetingPlatform,
           meetingUrl,
           meetingId,
@@ -247,6 +269,75 @@ export function CoachSignupForm({
         <label className={labelClass}>What do you coach?</label>
         <p className="mb-2 mt-1 text-sm text-slate-500">Pick at least one.</p>
         <ChipSelect options={FOCUS_AREAS} selected={focusAreas} onToggle={toggleFocus} />
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">How you coach</h2>
+        <p className="mt-1 text-sm text-slate-500">
+          Optional, but it helps students pick you — all clicks, no writing.
+        </p>
+        <div className="mt-4 space-y-4">
+          <div>
+            <label className={labelClass} htmlFor="bestFor">
+              What are you best for?
+            </label>
+            <select
+              id="bestFor"
+              className={`${inputClass} mt-1.5`}
+              value={bestFor}
+              onChange={(e) => setBestFor(e.target.value)}
+            >
+              <option value="">Auto — use my top focus area</option>
+              {BEST_FOR.map((b) => (
+                <option key={b.key} value={b.key}>
+                  Best for {b.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              The one thing you most want to be booked for — students see it as
+              “Best for …” on your card.
+            </p>
+          </div>
+          <div>
+            <label className={labelClass}>How do you run sessions?</label>
+            <p className="mb-2 mt-1 text-sm text-slate-500">Pick any that apply.</p>
+            <ChipSelect
+              options={SESSION_STYLES.map((s) => ({ key: s.key, label: s.label }))}
+              selected={sessionStyles}
+              onToggle={toggleSessionStyle}
+            />
+          </div>
+          <div>
+            <span className={labelClass}>
+              Are you currently at {firm || "your firm"}?
+            </span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {FIRM_STATUSES.map((s) => {
+                const active = firmStatus === s.key;
+                return (
+                  <button
+                    type="button"
+                    key={s.key}
+                    aria-pressed={active}
+                    onClick={() => setFirmStatus(active ? "" : s.key)}
+                    className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      active
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                        : "border-slate-300 bg-white text-slate-600 hover:border-slate-400"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Lets your profile say “Current …” or “Former …” before your firm
+              and title. Tap again to clear.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

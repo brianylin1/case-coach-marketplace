@@ -10,7 +10,12 @@ import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { MeetingActions } from "@/components/MeetingActions";
-import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
+import {
+  bestForPhrase,
+  focusLabel,
+  meetingPlatformLabel,
+  sessionStyleLabel,
+} from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
@@ -203,6 +208,8 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
   const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
   const hasMeetingInfo = Boolean(coach.meetingUrl && coach.meetingPlatform);
+  const bestFor = bestForPhrase(coach.bestFor, focus);
+  const sessionStyleKeys = parseList(coach.sessionStyles);
 
   return (
     <Shell
@@ -275,6 +282,33 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
+            <Field label="Best for">
+              {bestFor ? (
+                <span>
+                  Best for {bestFor}
+                  {!coach.bestFor && (
+                    <span className="text-xs text-slate-400">
+                      {" "}
+                      · auto from your focus areas
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span className="text-slate-400">Not set</span>
+              )}
+            </Field>
+            <Field label="Session style">
+              {sessionStyleKeys.length > 0 ? (
+                sessionStyleKeys.map(sessionStyleLabel).join(" · ")
+              ) : (
+                <Link
+                  href="/signup/coach"
+                  className="font-medium text-indigo-600 hover:underline"
+                >
+                  Add how you run sessions →
+                </Link>
+              )}
+            </Field>
             <Field label="Reusable coaching room">
               {hasMeetingInfo ? (
                 <div className="space-y-1">

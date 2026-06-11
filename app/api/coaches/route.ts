@@ -4,7 +4,14 @@ import { getSession, setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
-import { isFirm, isFocusKey, isMeetingPlatform } from "@/lib/constants";
+import {
+  isBestForKey,
+  isFirm,
+  isFirmStatus,
+  isFocusKey,
+  isMeetingPlatform,
+  isSessionStyleKey,
+} from "@/lib/constants";
 
 // Create (or update) a coach profile and sign them in. Idempotent on email.
 export async function POST(request: Request) {
@@ -26,6 +33,12 @@ export async function POST(request: Request) {
   const hourlyRate = nonNegativeInt(body.hourlyRate, 100_000);
   const availability = str(body.availability, 240) || null;
   const linkedinUrl = str(body.linkedinUrl, 300) || null;
+  // Trust/positioning — all optional; unknown keys are dropped, not rejected.
+  const bestForRaw = str(body.bestFor, 40);
+  const bestFor = isBestForKey(bestForRaw) ? bestForRaw : null;
+  const sessionStyles = strList(body.sessionStyles).filter(isSessionStyleKey);
+  const firmStatusRaw = str(body.firmStatus, 10);
+  const firmStatus = isFirmStatus(firmStatusRaw) ? firmStatusRaw : null;
   const timezoneRaw = str(body.timezone, 64);
   const timezone = isValidTimeZone(timezoneRaw) ? timezoneRaw : "UTC";
   // Coach-provided meeting room. A coach is bookable only once both a valid
@@ -68,6 +81,9 @@ export async function POST(request: Request) {
     hourlyRate,
     availability,
     linkedinUrl,
+    bestFor,
+    sessionStyles: serializeList(sessionStyles),
+    firmStatus,
     timezone,
     meetingPlatform,
     meetingUrl,

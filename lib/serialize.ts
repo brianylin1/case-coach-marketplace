@@ -14,6 +14,9 @@ type CoachRow = {
   hourlyRate: number;
   availability: string | null;
   linkedinUrl: string | null;
+  bestFor: string | null;
+  sessionStyles: string;
+  firmStatus: string | null;
 };
 
 export function toCoachView(coach: CoachRow): CoachView {
@@ -29,6 +32,9 @@ export function toCoachView(coach: CoachRow): CoachView {
     hourlyRate: coach.hourlyRate,
     availability: coach.availability,
     linkedinUrl: coach.linkedinUrl,
+    bestFor: coach.bestFor,
+    sessionStyleKeys: parseList(coach.sessionStyles),
+    firmStatus: coach.firmStatus,
   };
 }
 

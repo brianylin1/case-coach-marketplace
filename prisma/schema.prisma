@@ -38,6 +38,13 @@ model Coach {
   hourlyRate   Int                 @default(0)
   availability String?
   linkedinUrl  String?
+  // Trust/positioning — all optional, with student-facing fallbacks when unset
+  // (see lib/constants.ts for the curated keys). bestFor: single BEST_FOR key;
+  // sessionStyles: JSON-string list of SESSION_STYLE keys; firmStatus:
+  // "current" | "former" at `firm` (null = unstated; we never guess).
+  bestFor       String?
+  sessionStyles String  @default("[]")
+  firmStatus    String?
   // Coach-provided meeting room. A coach is bookable only once meetingUrl +
   // meetingPlatform are set (no auto-generated rooms).
   meetingPlatform     String?        // "teams" | "zoom" | "meet" | "other"

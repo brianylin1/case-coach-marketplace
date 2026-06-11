@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { FocusTag } from "./FocusTag";
+import { bestForPhrase } from "@/lib/constants";
 import { formatRate, parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
@@ -14,10 +15,19 @@ type CoachLike = {
   headline: string | null;
   focusAreas: string;
   hourlyRate: number;
+  bestFor: string | null;
+  firmStatus: string | null;
 };
 
 export function CoachCard({ coach }: { coach: CoachLike }) {
   const focus = parseList(coach.focusAreas);
+  const best = bestForPhrase(coach.bestFor, focus);
+  const statusWord =
+    coach.firmStatus === "current"
+      ? "Current"
+      : coach.firmStatus === "former"
+        ? "Former"
+        : null;
   return (
     <Link
       href={`/coaches/${coach.id}`}
@@ -31,10 +41,17 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
             <FirmBadge firm={coach.firm} />
           </div>
           <p className="text-sm text-slate-500">
+            {statusWord ? `${statusWord} ` : ""}
             {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
           </p>
         </div>
       </div>
+
+      {best && (
+        <p className="-mb-1 text-xs font-semibold text-indigo-600">
+          Best for {best}
+        </p>
+      )}
 
       {coach.headline && (
         <p className="line-clamp-2 text-sm text-slate-600">{coach.headline}</p>
