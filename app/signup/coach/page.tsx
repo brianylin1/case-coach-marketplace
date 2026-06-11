@@ -40,7 +40,6 @@ export default async function CoachSignupPage({
         bestFor: coach.bestFor ?? "",
         casesCoached: coach.casesCoached ?? "",
         firmStatus: coach.firmStatus ?? "",
-        photoUrl: coach.photoUrl ?? "",
         meetingPlatform: coach.meetingPlatform ?? "",
         meetingUrl: coach.meetingUrl ?? "",
         meetingId: coach.meetingId ?? "",

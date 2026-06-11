@@ -32,7 +32,6 @@ export type CoachFormValues = {
   bestFor: string;
   casesCoached: string;
   firmStatus: string;
-  photoUrl: string;
   meetingPlatform: string;
   meetingUrl: string;
   meetingId: string;
@@ -68,7 +67,6 @@ export function CoachSignupForm({
   const [bestFor, setBestFor] = useState(iv.bestFor ?? "");
   const [casesCoached, setCasesCoached] = useState(iv.casesCoached ?? "");
   const [firmStatus, setFirmStatus] = useState(iv.firmStatus ?? "");
-  const [photoUrl, setPhotoUrl] = useState(iv.photoUrl ?? "");
   const [meetingPlatform, setMeetingPlatform] = useState(iv.meetingPlatform ?? "");
   const [meetingUrl, setMeetingUrl] = useState(iv.meetingUrl ?? "");
   const [meetingId, setMeetingId] = useState(iv.meetingId ?? "");
@@ -119,7 +117,6 @@ export function CoachSignupForm({
           bestFor,
           casesCoached,
           firmStatus,
-          photoUrl,
           meetingPlatform,
           meetingUrl,
           meetingId,
@@ -427,22 +424,6 @@ export function CoachSignupForm({
           onChange={(e) => setLinkedinUrl(e.target.value)}
           placeholder="https://www.linkedin.com/in/…"
         />
-      </div>
-
-      <div>
-        <label className={labelClass} htmlFor="photoUrl">
-          Profile photo URL <span className="font-normal text-slate-400">(optional)</span>
-        </label>
-        <input
-          id="photoUrl"
-          className={`${inputClass} mt-1.5`}
-          value={photoUrl}
-          onChange={(e) => setPhotoUrl(e.target.value)}
-          placeholder="https://…/headshot.jpg"
-        />
-        <p className="mt-1 text-xs text-slate-400">
-          Paste a link to a headshot. Leave blank to use your initials.
-        </p>
       </div>
 
       <div
