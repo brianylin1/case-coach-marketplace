@@ -126,6 +126,17 @@ export function casesCoachedLabel(key: string | null | undefined): string | null
   return (key && CASES_COACHED_LABELS[key]) || null;
 }
 
+// Curated hourly-rate options for the coach signup/edit dropdown (USD). Cleaner
+// marketplace pricing than a free-form number; 0 = pro bono. An existing
+// off-list rate is preserved on edit (the form prepends it).
+export const COACH_RATES: readonly number[] = [
+  0, 40, 50, 60, 75, 100, 125, 150, 175, 200, 250,
+];
+
+export function rateOptionLabel(rate: number): string {
+  return rate <= 0 ? "Pro bono (free)" : `$${rate}/hr`;
+}
+
 // Whether the coach is currently at `firm` or an alum. Self-reported — same
 // trust basis as firm/title — and rendered as the coach's claim, never as
 // "verified". Unset means we show the neutral wording used before this field.

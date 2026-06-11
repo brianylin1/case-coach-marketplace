@@ -7,10 +7,12 @@ import { ChipSelect } from "./ChipSelect";
 import {
   BEST_FOR,
   CASES_COACHED,
+  COACH_RATES,
   FIRMS,
   FIRM_STATUSES,
   FOCUS_AREAS,
   MEETING_PLATFORMS,
+  rateOptionLabel,
 } from "@/lib/constants";
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
@@ -144,6 +146,14 @@ export function CoachSignupForm({
   const tzOptions = COMMON_TIMEZONES.some((t) => t.value === timezone)
     ? COMMON_TIMEZONES
     : [{ value: timezone, label: timezone }, ...COMMON_TIMEZONES];
+
+  // Keep an existing off-list rate (e.g. a legacy $120) selectable so editing a
+  // coach never silently snaps their price to a curated value.
+  const rateNum = Number(hourlyRate);
+  const rateOptions =
+    hourlyRate !== "" && Number.isFinite(rateNum) && !COACH_RATES.includes(rateNum)
+      ? [rateNum, ...COACH_RATES]
+      : COACH_RATES;
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
@@ -354,15 +364,21 @@ export function CoachSignupForm({
           <label className={labelClass} htmlFor="rate">
             Hourly rate (USD)
           </label>
-          <input
+          <select
             id="rate"
-            type="number"
-            min={0}
             className={`${inputClass} mt-1.5`}
             value={hourlyRate}
             onChange={(e) => setHourlyRate(e.target.value)}
-            placeholder="0 = pro bono"
-          />
+          >
+            <option value="" disabled>
+              Select a rate…
+            </option>
+            {rateOptions.map((r) => (
+              <option key={r} value={r}>
+                {rateOptionLabel(r)}
+              </option>
+            ))}
+          </select>
         </div>
         <div>
           <label className={labelClass} htmlFor="availability">
