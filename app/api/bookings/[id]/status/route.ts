@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
+import { stripeConfigured } from "@/lib/stripe";
+import { reconcileBooking } from "@/lib/booking-reconcile";
 
 // Lets the student's /booking/success page poll their own booking until the
 // Stripe webhook flips it to CONFIRMED (the redirect can beat the webhook).
@@ -21,8 +23,14 @@ export async function GET(
   if (!booking || booking.studentId !== session.id) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });
   }
-  return NextResponse.json({
-    status: booking.status,
-    paymentStatus: booking.paymentStatus,
-  });
+
+  let status = booking.status;
+  let paymentStatus = booking.paymentStatus;
+  // Confirm-on-return: if still awaiting payment, verify with Stripe directly so
+  // a delayed or lost webhook never leaves a paying student unconfirmed.
+  if (status === "PENDING_PAYMENT" && stripeConfigured()) {
+    status = await reconcileBooking(bookingId);
+    if (status === "CONFIRMED") paymentStatus = "PAID";
+  }
+  return NextResponse.json({ status, paymentStatus });
 }

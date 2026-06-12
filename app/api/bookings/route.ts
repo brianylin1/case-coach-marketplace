@@ -11,6 +11,7 @@ import {
 } from "@/lib/payments";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { notifyBookingConfirmed } from "@/lib/booking-notify";
+import { reconcileBooking } from "@/lib/booking-reconcile";
 import {
   BOOKING_HORIZON_DAYS,
   isStartWithinBlocks,
@@ -126,14 +127,29 @@ export async function POST(request: Request) {
       );
     }
     const split = computeSplit(amount);
+
+    // Before reclaiming a stale hold, verify it isn't actually paid. A paid-but-
+    // unconfirmed hold (delayed/lost webhook) must never be deleted: reconcile
+    // flips it to CONFIRMED if Stripe says it's paid, so the transaction below
+    // then treats it as genuinely taken rather than reclaimable.
+    const existingHold = await prisma.booking.findUnique({
+      where: { coachId_startTime: { coachId, startTime } },
+    });
+    if (
+      existingHold?.status === "PENDING_PAYMENT" &&
+      now.getTime() - existingHold.createdAt.getTime() > STALE_HOLD_MS
+    ) {
+      await reconcileBooking(existingHold.id);
+    }
+
     try {
       const booking = await prisma.$transaction(async (tx) => {
         const existing = await tx.booking.findUnique({
           where: { coachId_startTime: { coachId, startTime } },
         });
         if (existing) {
-          // Reclaim a stale hold from an abandoned checkout whose expiry webhook
-          // never arrived; otherwise the slot is genuinely taken.
+          // Reclaim only a genuinely-unpaid stale hold (reconcile above will have
+          // promoted a paid one to CONFIRMED, which falls through to TAKEN here).
           const stale =
             existing.status === "PENDING_PAYMENT" &&
             now.getTime() - existing.createdAt.getTime() > STALE_HOLD_MS;
