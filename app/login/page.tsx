@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Sign in — CaseCoach",
+  title: "Sign in · Down to Case",
 };
 
 export default async function LoginPage({

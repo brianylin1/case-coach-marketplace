@@ -24,9 +24,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const coach = await getCoach((await params).id);
-  if (!coach) return { title: "Coach not found — CaseCoach" };
+  if (!coach) return { title: "Coach not found · Down to Case" };
   return {
-    title: `${coach.name} — ${coach.firm} ${coach.title} | CaseCoach`,
+    title: `${coach.name}, ${coach.firm} ${coach.title} · Down to Case`,
     description: coach.headline ?? coach.bio.slice(0, 150),
   };
 }

@@ -20,9 +20,9 @@ import { zonedDayKey, zonedParts } from "@/lib/timezone";
 import type { CalendarCell, DaySection, SlotView } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: "Book an MBB case coach — CaseCoach",
+  title: "Book a mock case · Down to Case",
   description:
-    "Scan a weekly calendar of open coaching slots from McKinsey, Bain, and BCG consultants and book instantly.",
+    "Book a live mock case with current and former consultants from top firms. Pick a time and book instantly.",
 };
 
 type SearchParams = Promise<{
@@ -175,11 +175,11 @@ export default async function SessionsPage({
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <header className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Book an MBB case coach
+          Book a mock case
         </h1>
         <p className="mt-1 text-slate-600">
-          Scan a time, then pick your coach — McKinsey, Bain &amp; BCG, available
-          this week.
+          Scan a time, then pick your coach. Current and former consultants from
+          top firms.
         </p>
       </header>
 

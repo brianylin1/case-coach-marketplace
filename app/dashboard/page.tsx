@@ -17,7 +17,7 @@ import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Your dashboard — CaseCoach",
+  title: "Your dashboard · Down to Case",
 };
 
 export default async function DashboardPage() {

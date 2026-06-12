@@ -19,7 +19,7 @@ export async function SiteHeader() {
         <Link href="/" className="flex items-center gap-2.5">
           <Logo />
           <span className="text-lg font-semibold tracking-tight text-slate-900">
-            CaseCoach
+            Down to Case
           </span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">

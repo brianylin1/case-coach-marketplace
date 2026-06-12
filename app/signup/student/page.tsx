@@ -6,7 +6,7 @@ import { parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Sign up as a student — CaseCoach",
+  title: "Sign up as a student · Down to Case",
 };
 
 export default async function StudentSignupPage() {
@@ -44,7 +44,7 @@ export default async function StudentSignupPage() {
       {!editing && (
         <div className="mt-6 space-y-1 text-center text-sm text-slate-500">
           <p>
-            Are you an MBB consultant?{" "}
+            Are you a consultant at a top firm?{" "}
             <Link
               href="/signup/coach"
               className="font-medium text-indigo-600 hover:underline"

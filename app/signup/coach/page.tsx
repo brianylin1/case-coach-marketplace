@@ -7,7 +7,7 @@ import { parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Coach with CaseCoach — for MBB consultants",
+  title: "Coach with Down to Case · for consultants at top firms",
 };
 
 export default async function CoachSignupPage({
