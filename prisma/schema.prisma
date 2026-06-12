@@ -55,6 +55,11 @@ model Coach {
   meetingPasscode     String?
   meetingInstructions String?
   timezone     String              @default("UTC") // IANA tz; availability is authored as wall-clock time in this zone
+  // Stripe Connect (Express). Set once a coach onboards for payouts. A coach
+  // with hourlyRate > 0 is bookable only when stripePayoutsEnabled is true
+  // (pro bono coaches never need Stripe). Cached from the account.updated webhook.
+  stripeAccountId      String?
+  stripePayoutsEnabled Boolean             @default(false)
   isActive     Boolean             @default(true)
   createdAt    DateTime            @default(now())
   blocks       AvailabilityBlock[]
@@ -91,7 +96,7 @@ model Booking {
   pricePaid     Int      @default(0)
   paymentStatus String   @default("SIMULATED")
   paymentRef    String?
-  status        String   @default("CONFIRMED")
+  status        String   @default("CONFIRMED") // PENDING_PAYMENT | CONFIRMED | CANCELLED | EXPIRED
   // Coach meeting details, snapshotted at booking time so the card/email/ICS
   // stay consistent even if the coach later edits their room.
   meetingPlatform     String?
@@ -100,8 +105,25 @@ model Booking {
   meetingPasscode     String?
   meetingInstructions String?
   emailStatus   String   @default("PENDING") // PENDING | SENT | SIMULATED | FAILED
+  // ---- Stripe (Phase 1, Option B: hold funds on platform until after session)
+  // For a paid booking: a PENDING_PAYMENT row holds the slot while the student
+  // pays via Checkout; the charge settles to the platform; coachShareCents is
+  // transferred to the coach after the session (payoutReleaseAfter).
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  stripeChargeId          String? // set on payment success; source_transaction for the payout
+  coachStripeAccountId    String? // snapshot of the coach's connected account
+  amountChargedCents      Int?
+  platformFeeCents        Int?
+  coachShareCents         Int?
+  currency                String    @default("usd")
+  payoutStatus            String    @default("NONE") // NONE | HELD | RELEASED | FAILED | SKIPPED
+  payoutReleaseAfter      DateTime?
+  stripeTransferId        String?
+  payoutReleasedAt        DateTime?
   createdAt     DateTime @default(now())
 
   @@unique([coachId, startTime])
   @@index([studentId])
+  @@index([payoutStatus, payoutReleaseAfter])
 }
