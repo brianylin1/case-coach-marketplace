@@ -4,8 +4,7 @@ import { getSession } from "@/lib/session";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { str } from "@/lib/validation";
 import { processPayment } from "@/lib/payments";
-import { buildBookingEvent, buildIcs } from "@/lib/ics";
-import { sendBookingEmails } from "@/lib/email";
+import { notifyBookingConfirmed } from "@/lib/booking-notify";
 import {
   BOOKING_HORIZON_DAYS,
   isStartWithinBlocks,
@@ -133,48 +132,11 @@ export async function POST(request: Request) {
       });
     });
 
-    // Capture the student's display zone (cc_tz cookie) in request scope.
+    // Capture the student's display zone (cc_tz cookie) in request scope, then
+    // build the invite + email both parties after the response is sent, so a
+    // mail hiccup never fails a confirmed booking (Vercel keeps the fn alive).
     const studentTimezone = await getViewerTimeZone();
-    // Build the invite + email both parties after the response is sent, so a
-    // mail hiccup never fails a paid booking (Vercel keeps the function alive).
-    after(async () => {
-      try {
-        const ics = buildIcs(
-          buildBookingEvent({
-            bookingId: booking.id,
-            start: startTime,
-            durationMins: SESSION_MINUTES,
-            coachName: coach.name,
-            coachEmail: coach.email,
-            studentName: student.name,
-            studentEmail: student.email,
-            focusArea,
-            meeting,
-          }),
-        );
-        const result = await sendBookingEmails({
-          bookingId: booking.id,
-          start: startTime,
-          durationMins: SESSION_MINUTES,
-          coach: { name: coach.name, email: coach.email, timezone: coach.timezone },
-          student: { name: student.name, email: student.email },
-          studentTimezone,
-          focusArea,
-          pricePaid: amount,
-          meeting,
-          ics,
-        });
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: { emailStatus: result },
-        });
-      } catch (err) {
-        console.error(`booking ${booking.id} notify failed`, err);
-        await prisma.booking
-          .update({ where: { id: booking.id }, data: { emailStatus: "FAILED" } })
-          .catch(() => {});
-      }
-    });
+    after(() => notifyBookingConfirmed(booking.id, studentTimezone));
 
     return NextResponse.json({
       id: booking.id,
