@@ -3,7 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { str } from "@/lib/validation";
-import { processPayment } from "@/lib/payments";
+import {
+  processPayment,
+  PAYMENTS_ENABLED,
+  computeSplit,
+  CURRENCY,
+} from "@/lib/payments";
+import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { notifyBookingConfirmed } from "@/lib/booking-notify";
 import {
   BOOKING_HORIZON_DAYS,
@@ -11,8 +17,14 @@ import {
   SESSION_MINUTES,
 } from "@/lib/availability";
 
+// A PENDING_PAYMENT hold older than this (just beyond the 30-min Checkout
+// expiry) is treated as abandoned and reclaimed, in case the expiry webhook
+// was missed.
+const STALE_HOLD_MS = 35 * 60 * 1000;
+
 // A logged-in student books a generated 60-min session by (coachId, startTime).
-// Payment is simulated via lib/payments.ts (swap for Stripe later).
+// Paid coaches go through Stripe Checkout when PAYMENTS_ENABLED; pro bono and
+// the flag-off path confirm instantly (unchanged behavior).
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "student") {
@@ -101,9 +113,112 @@ export async function POST(request: Request) {
   };
 
   const amount = coach.hourlyRate;
+  const usePaidCheckout = PAYMENTS_ENABLED && stripeConfigured() && amount > 0;
+
+  // ---- Paid path: hold the slot, then collect payment via Stripe Checkout.
+  // The PENDING_PAYMENT row locks the slot; the charge settles to the platform
+  // and the coach's share transfers only after the session (release cron).
+  if (usePaidCheckout) {
+    if (!coach.stripeAccountId || !coach.stripePayoutsEnabled) {
+      return NextResponse.json(
+        { error: "This coach isn't set up to take payments yet." },
+        { status: 409 },
+      );
+    }
+    const split = computeSplit(amount);
+    try {
+      const booking = await prisma.$transaction(async (tx) => {
+        const existing = await tx.booking.findUnique({
+          where: { coachId_startTime: { coachId, startTime } },
+        });
+        if (existing) {
+          // Reclaim a stale hold from an abandoned checkout whose expiry webhook
+          // never arrived; otherwise the slot is genuinely taken.
+          const stale =
+            existing.status === "PENDING_PAYMENT" &&
+            now.getTime() - existing.createdAt.getTime() > STALE_HOLD_MS;
+          if (stale) await tx.booking.delete({ where: { id: existing.id } });
+          else throw new Error("TAKEN");
+        }
+        return tx.booking.create({
+          data: {
+            coachId,
+            studentId: session.id,
+            startTime,
+            durationMins: SESSION_MINUTES,
+            focusArea,
+            pricePaid: amount,
+            paymentStatus: "REQUIRES_PAYMENT",
+            status: "PENDING_PAYMENT",
+            meetingPlatform: meeting.platform,
+            meetingUrl: meeting.url,
+            meetingId: meeting.id,
+            meetingPasscode: meeting.passcode,
+            meetingInstructions: meeting.instructions,
+            coachStripeAccountId: coach.stripeAccountId,
+            amountChargedCents: split.amountCents,
+            platformFeeCents: split.platformFeeCents,
+            coachShareCents: split.coachShareCents,
+            currency: CURRENCY,
+          },
+        });
+      });
+
+      try {
+        const origin =
+          request.headers.get("origin") ?? new URL(request.url).origin;
+        const transferGroup = `booking_${booking.id}`;
+        const checkout = await getStripe().checkout.sessions.create({
+          mode: "payment",
+          customer_email: student.email,
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: CURRENCY,
+                unit_amount: split.amountCents,
+                product_data: {
+                  name: `Mock case with ${coach.name}`,
+                  description: `60-minute live session · ${coach.firm} ${coach.title}`,
+                },
+              },
+            },
+          ],
+          payment_intent_data: {
+            transfer_group: transferGroup,
+            metadata: { bookingId: String(booking.id) },
+          },
+          metadata: { bookingId: String(booking.id) },
+          expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+          success_url: `${origin}/booking/success?b=${booking.id}`,
+          cancel_url: `${origin}/booking/cancel?b=${booking.id}`,
+        });
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { stripeCheckoutSessionId: checkout.id },
+        });
+        return NextResponse.json({ id: booking.id, checkoutUrl: checkout.url });
+      } catch (err) {
+        console.error(`booking ${booking.id} checkout creation failed`, err);
+        // Release the hold so the slot frees immediately.
+        await prisma.booking.delete({ where: { id: booking.id } }).catch(() => {});
+        return NextResponse.json(
+          { error: "Could not start payment. Please try again." },
+          { status: 502 },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "Sorry — that time was just booked. Pick another." },
+        { status: 409 },
+      );
+    }
+  }
+
+  // ---- Instant path: pro bono, or simulated when PAYMENTS_ENABLED is off.
   const payment = await processPayment({
     amount,
-    description: `CaseCoach session with ${coach.name}`,
+    description: `Down to Case session with ${coach.name}`,
   });
 
   try {
