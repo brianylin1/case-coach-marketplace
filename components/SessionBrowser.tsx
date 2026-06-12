@@ -14,9 +14,11 @@ import type { DaySection, SlotView } from "@/lib/types";
 export function SessionBrowser({
   sections,
   isStudent,
+  paymentsEnabled,
 }: {
   sections: DaySection[];
   isStudent: boolean;
+  paymentsEnabled: boolean;
 }) {
   const router = useRouter();
   const [profileCoachId, setProfileCoachId] = useState<number | null>(null);
@@ -102,6 +104,7 @@ export function SessionBrowser({
       <BookingModal
         slot={bookingSlot}
         isStudent={isStudent}
+        paymentsEnabled={paymentsEnabled}
         onClose={() => setBookingSlot(null)}
         onBooked={() => router.refresh()}
       />

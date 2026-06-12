@@ -7,6 +7,7 @@ import { ViewToggle } from "@/components/ViewToggle";
 import { SessionCalendar } from "@/components/SessionCalendar";
 import { SessionBrowser } from "@/components/SessionBrowser";
 import { toSessionView } from "@/lib/serialize";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { FIRMS, isFirm, isFocusKey, priceBucket } from "@/lib/constants";
 import {
   BOOKING_HORIZON_DAYS,
@@ -122,7 +123,13 @@ export default async function SessionsPage({
     );
     const coachCount = new Set(views.map((v) => v.coach.id)).size;
     summary = `${views.length} open session${views.length === 1 ? "" : "s"} across ${coachCount} coach${coachCount === 1 ? "" : "es"}`;
-    content = <SessionBrowser sections={sections} isStudent={Boolean(isStudent)} />;
+    content = (
+      <SessionBrowser
+        sections={sections}
+        isStudent={Boolean(isStudent)}
+        paymentsEnabled={PAYMENTS_ENABLED}
+      />
+    );
   } else {
     // Lightweight calendar: counts + firm dots only (details fetched on click).
     const coaches = await prisma.coach.findMany({
@@ -162,6 +169,7 @@ export default async function SessionsPage({
         hours={calendarHours(cells.map((c) => c.hour))}
         cells={cells}
         isStudent={Boolean(isStudent)}
+        paymentsEnabled={PAYMENTS_ENABLED}
         filterQuery={filterQuery}
         nowMs={now.getTime()}
         hasFilters={hasFilters}

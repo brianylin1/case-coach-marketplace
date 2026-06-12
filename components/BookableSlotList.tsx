@@ -10,9 +10,11 @@ import type { SlotView } from "@/lib/types";
 export function BookableSlotList({
   slots,
   isStudent,
+  paymentsEnabled,
 }: {
   slots: SlotView[];
   isStudent: boolean;
+  paymentsEnabled: boolean;
 }) {
   const router = useRouter();
   const [bookingSlot, setBookingSlot] = useState<SlotView | null>(null);
@@ -44,6 +46,7 @@ export function BookableSlotList({
       <BookingModal
         slot={bookingSlot}
         isStudent={isStudent}
+        paymentsEnabled={paymentsEnabled}
         onClose={() => setBookingSlot(null)}
         onBooked={() => router.refresh()}
       />

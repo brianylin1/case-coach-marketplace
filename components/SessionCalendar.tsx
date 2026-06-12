@@ -45,6 +45,7 @@ export function SessionCalendar({
   hours,
   cells,
   isStudent,
+  paymentsEnabled,
   filterQuery,
   nowMs,
   hasFilters,
@@ -55,6 +56,7 @@ export function SessionCalendar({
   hours: number[];
   cells: CalendarCell[];
   isStudent: boolean;
+  paymentsEnabled: boolean;
   filterQuery: string;
   nowMs: number;
   hasFilters: boolean;
@@ -379,6 +381,7 @@ export function SessionCalendar({
       <BookingModal
         slot={bookingSlot}
         isStudent={isStudent}
+        paymentsEnabled={paymentsEnabled}
         onClose={() => setBookingSlot(null)}
         onBooked={() => router.refresh()}
       />

@@ -10,6 +10,7 @@ import { toCoachView, toSessionView } from "@/lib/serialize";
 import { bookingWindow, coachSessionStarts } from "@/lib/availability";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { cardClass } from "@/lib/ui";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
 import type { SlotView } from "@/lib/types";
 
 async function getCoach(idParam: string) {
@@ -79,7 +80,11 @@ export default async function CoachPage({
           </h2>
           <div className="mt-3">
             {bookable ? (
-              <BookableSlotList slots={slotViews} isStudent={Boolean(isStudent)} />
+              <BookableSlotList
+                slots={slotViews}
+                isStudent={Boolean(isStudent)}
+                paymentsEnabled={PAYMENTS_ENABLED}
+              />
             ) : (
               <p className="text-sm text-slate-500">
                 This coach isn&apos;t accepting bookings yet.
