@@ -168,6 +168,9 @@ export async function POST(request: Request) {
         const origin =
           request.headers.get("origin") ?? new URL(request.url).origin;
         const transferGroup = `booking_${booking.id}`;
+        // Carry the student's display zone so the webhook can localize emails
+        // (no cc_tz cookie is present on the server-to-server webhook call).
+        const studentTimezone = await getViewerTimeZone();
         const checkout = await getStripe().checkout.sessions.create({
           mode: "payment",
           customer_email: student.email,
@@ -188,7 +191,10 @@ export async function POST(request: Request) {
             transfer_group: transferGroup,
             metadata: { bookingId: String(booking.id) },
           },
-          metadata: { bookingId: String(booking.id) },
+          metadata: {
+            bookingId: String(booking.id),
+            studentTz: studentTimezone,
+          },
           expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
           success_url: `${origin}/booking/success?b=${booking.id}`,
           cancel_url: `${origin}/booking/cancel?b=${booking.id}`,
