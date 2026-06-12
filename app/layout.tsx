@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CaseCoach — MBB case interview coaching, 1:1",
+  title: "Down to Case · Live mock case interviews with consultants from top firms",
   description:
-    "CaseCoach connects students prepping for consulting case interviews with current and former McKinsey, Bain, and BCG consultants for low-friction 1:1 coaching.",
+    "Down to Case connects consulting candidates with current and former consultants from top firms for live mock case interviews and coaching. Pick a time, book instantly, and walk in knowing what good looks like.",
 };
 
 export default function RootLayout({

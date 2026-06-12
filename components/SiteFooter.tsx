@@ -8,7 +8,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
             <Logo />
-            <span className="font-semibold text-slate-900">CaseCoach</span>
+            <span className="font-semibold text-slate-900">Down to Case</span>
           </div>
           <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600">
             <Link href="/sessions" className="hover:text-slate-900">
@@ -26,9 +26,9 @@ export function SiteFooter() {
           </nav>
         </div>
         <p className="mt-6 text-xs text-slate-400">
-          © {new Date().getFullYear()} CaseCoach. A demo marketplace — not
-          affiliated with or endorsed by McKinsey &amp; Company, Bain &amp;
-          Company, or Boston Consulting Group.
+          © {new Date().getFullYear()} Down to Case. An independent
+          marketplace, not affiliated with or endorsed by any of the firms
+          named on this site.
         </p>
       </div>
     </footer>
