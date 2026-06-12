@@ -203,3 +203,26 @@ export const BRAND = "Down to Case";
 
 // Support contact surfaced in booking emails and calendar invites.
 export const SUPPORT_EMAIL = "support@downtocase.com";
+
+// ----- Booking & payout lifecycle (plain strings, validated in app code) -----
+
+// Booking.status. PENDING_PAYMENT holds a slot while a paid student checks out;
+// it becomes CONFIRMED on payment success, or EXPIRED/deleted if abandoned.
+export const BOOKING_STATUSES = [
+  "PENDING_PAYMENT",
+  "CONFIRMED",
+  "CANCELLED",
+  "EXPIRED",
+] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+// Booking.payoutStatus. HELD = paid, funds on the platform awaiting release;
+// RELEASED = transferred to the coach; SKIPPED = no payout (pro bono/simulated).
+export const PAYOUT_STATUSES = [
+  "NONE",
+  "HELD",
+  "RELEASED",
+  "FAILED",
+  "SKIPPED",
+] as const;
+export type PayoutStatus = (typeof PAYOUT_STATUSES)[number];

@@ -15,18 +15,27 @@ import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
+import { stripeConfigured } from "@/lib/stripe";
+import { syncConnectAccount } from "@/lib/connect";
+import { ConnectPayoutsButton } from "@/components/ConnectPayoutsButton";
 
 export const metadata: Metadata = {
   title: "Your dashboard · Down to Case",
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stripe?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const { stripe } = await searchParams;
   return user.role === "student" ? (
     <StudentDashboard studentId={user.student.id} />
   ) : (
-    <CoachDashboard coachId={user.coach.id} />
+    <CoachDashboard coachId={user.coach.id} stripeReturn={stripe === "connected"} />
   );
 }
 
@@ -185,7 +194,13 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
 
 /* ------------------------------ Coach view ------------------------------ */
 
-async function CoachDashboard({ coachId }: { coachId: number }) {
+async function CoachDashboard({
+  coachId,
+  stripeReturn,
+}: {
+  coachId: number;
+  stripeReturn: boolean;
+}) {
   const now = new Date();
   const [coach, bookings] = await Promise.all([
     prisma.coach.findUniqueOrThrow({
@@ -203,6 +218,16 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
   const earnings = bookings.reduce((sum, b) => sum + b.pricePaid, 0);
   const focus = parseList(coach.focusAreas);
   const hasMeetingInfo = Boolean(coach.meetingUrl && coach.meetingPlatform);
+
+  // Payout (Stripe Connect) state. Only relevant for paid coaches when payments
+  // are enabled; pro bono coaches never need Stripe. Sync on return from onboarding.
+  let payoutsEnabled = coach.stripePayoutsEnabled;
+  if (PAYMENTS_ENABLED && stripeReturn && coach.stripeAccountId && stripeConfigured()) {
+    payoutsEnabled = await syncConnectAccount(coach.id, coach.stripeAccountId).catch(
+      () => payoutsEnabled,
+    );
+  }
+  const needsPayouts = PAYMENTS_ENABLED && coach.hourlyRate > 0 && !payoutsEnabled;
 
   return (
     <Shell
@@ -223,6 +248,18 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
           <Link href="/signup/coach?section=meeting" className={`${btnPrimary} shrink-0`}>
             Configure Meeting Room
           </Link>
+        </div>
+      )}
+      {needsPayouts && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-300 bg-indigo-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-medium text-indigo-900">
+            💳 Connect payouts with Stripe so students can book your paid
+            sessions. You&apos;re paid automatically after each session.
+          </p>
+          <ConnectPayoutsButton
+            className={`${btnPrimary} shrink-0`}
+            label={coach.stripeAccountId ? "Finish payout setup" : "Connect payouts"}
+          />
         </div>
       )}
       <div className="mb-6 grid grid-cols-3 gap-4">
@@ -275,6 +312,11 @@ async function CoachDashboard({ coachId }: { coachId: number }) {
               {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
+            {PAYMENTS_ENABLED && coach.hourlyRate > 0 && (
+              <Field label="Payouts">
+                {payoutsEnabled ? "Active" : "Not connected"}
+              </Field>
+            )}
             <Field label="Reusable coaching room">
               {hasMeetingInfo ? (
                 <div className="space-y-1">

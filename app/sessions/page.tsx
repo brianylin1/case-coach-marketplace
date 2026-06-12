@@ -7,6 +7,8 @@ import { ViewToggle } from "@/components/ViewToggle";
 import { SessionCalendar } from "@/components/SessionCalendar";
 import { SessionBrowser } from "@/components/SessionBrowser";
 import { toSessionView } from "@/lib/serialize";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
+import { bookableCoachWhere } from "@/lib/bookable";
 import { FIRMS, isFirm, isFocusKey, priceBucket } from "@/lib/constants";
 import {
   BOOKING_HORIZON_DAYS,
@@ -44,12 +46,9 @@ export default async function SessionsPage({
   const now = new Date();
   const { lower, upper } = bookingWindow(now, viewerTz);
 
-  // Only coaches who've configured a meeting room are bookable / shown.
-  const coachWhere: Prisma.CoachWhereInput = {
-    isActive: true,
-    meetingUrl: { not: null },
-    meetingPlatform: { not: null },
-  };
+  // Active coaches with a meeting room — and, when payments are on, able to be
+  // paid (paid coaches need payouts enabled; pro bono never need Stripe).
+  const coachWhere: Prisma.CoachWhereInput = bookableCoachWhere();
   if (firm && isFirm(firm)) coachWhere.firm = firm;
   if (focus && isFocusKey(focus)) {
     coachWhere.focusAreas = { contains: `"${focus}"` };
@@ -76,7 +75,10 @@ export default async function SessionsPage({
   const [user, bookings] = await Promise.all([
     getCurrentUser(),
     prisma.booking.findMany({
-      where: { status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
+      where: {
+        status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
+        startTime: { gte: lower, lt: upper },
+      },
       select: { coachId: true, startTime: true },
     }),
   ]);
@@ -122,7 +124,13 @@ export default async function SessionsPage({
     );
     const coachCount = new Set(views.map((v) => v.coach.id)).size;
     summary = `${views.length} open session${views.length === 1 ? "" : "s"} across ${coachCount} coach${coachCount === 1 ? "" : "es"}`;
-    content = <SessionBrowser sections={sections} isStudent={Boolean(isStudent)} />;
+    content = (
+      <SessionBrowser
+        sections={sections}
+        isStudent={Boolean(isStudent)}
+        paymentsEnabled={PAYMENTS_ENABLED}
+      />
+    );
   } else {
     // Lightweight calendar: counts + firm dots only (details fetched on click).
     const coaches = await prisma.coach.findMany({
@@ -162,6 +170,7 @@ export default async function SessionsPage({
         hours={calendarHours(cells.map((c) => c.hour))}
         cells={cells}
         isStudent={Boolean(isStudent)}
+        paymentsEnabled={PAYMENTS_ENABLED}
         filterQuery={filterQuery}
         nowMs={now.getTime()}
         hasFilters={hasFilters}

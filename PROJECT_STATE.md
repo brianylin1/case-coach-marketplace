@@ -57,10 +57,14 @@ set availability once; students book a time in a couple of clicks).
 - **Auth:** lightweight **passwordless** signed-cookie sessions (HMAC over
   `{role,id}`) in `lib/session.ts`; `getCurrentUser()` is the server-only helper.
   Not production-grade — placeholder for magic-link/OAuth.
-- **Payments:** **SIMULATED.** `lib/payments.ts#processPayment` returns a fake
-  result ("Payment simulation for MVP"). `Booking` already stores
-  `pricePaid` / `paymentStatus` / `paymentRef` so Stripe drops in behind that
-  function (+ a webhook) without touching call sites.
+- **Payments:** **SIMULATED in production today.** A full **Stripe Phase 1**
+  implementation (Checkout + Connect Express + funds held on the platform until
+  after the session, released by a daily transfer cron) ships **behind
+  `PAYMENTS_ENABLED` (default off; not yet enabled in prod)** — see
+  `docs/stripe-phase1.md`. Flag off ⇒ bookings confirm instantly via
+  `lib/payments.ts#processPayment` exactly as before. `Booking` carries the
+  payment + payout fields; `Coach` carries `stripeAccountId` /
+  `stripePayoutsEnabled`.
 
 ---
 

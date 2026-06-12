@@ -26,16 +26,19 @@ type BookedResult = {
   coach: { name: string; email: string; firm: string; title: string };
 };
 
-// Controlled by parent via `slot` (null = closed). Two steps: review + simulated
-// payment, then a confirmation that reveals the coach's contact details.
+// Controlled by parent via `slot` (null = closed). Review step, then either a
+// redirect to Stripe Checkout (paid) or an instant confirmation revealing the
+// coach's contact details (pro bono / simulated).
 export function BookingModal({
   slot,
   isStudent,
+  paymentsEnabled,
   onClose,
   onBooked,
 }: {
   slot: SlotView | null;
   isStudent: boolean;
+  paymentsEnabled: boolean;
   onClose: () => void;
   onBooked: () => void;
 }) {
@@ -53,6 +56,9 @@ export function BookingModal({
       : coach?.firmStatus === "former"
         ? "Former "
         : "";
+
+  // Whether this booking will collect real money now (vs. instant/free path).
+  const willCharge = paymentsEnabled && (slot?.coach.hourlyRate ?? 0) > 0;
 
   function close() {
     const booked = Boolean(result);
@@ -76,6 +82,12 @@ export function BookingModal({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Could not complete the booking.");
+        return;
+      }
+      if (data.checkoutUrl) {
+        // Paid path: hand off to Stripe Checkout. Confirmation happens on the
+        // /booking/success page once the webhook records payment.
+        window.location.href = data.checkoutUrl as string;
         return;
       }
       setResult(data);
@@ -148,13 +160,31 @@ export function BookingModal({
                   {formatRate(slot.coach.hourlyRate)}
                 </span>
               </div>
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-                <CreditCard className="mt-0.5 size-4 shrink-0" />
-                <span>
-                  <strong>Payment simulation for MVP.</strong> No card is charged
-                  — this is the placeholder where Stripe checkout will go.
-                </span>
-              </div>
+              {paymentsEnabled ? (
+                willCharge ? (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                    <CreditCard className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      You&apos;ll continue to secure Stripe checkout. Your payment
+                      is held by Down to Case and released to your coach after the
+                      session.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0" />
+                    <span>This session is free, so you&apos;ll be booked instantly.</span>
+                  </div>
+                )
+              ) : (
+                <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                  <CreditCard className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    <strong>Payment simulation for MVP.</strong> No card is charged
+                    — this is the placeholder where Stripe checkout will go.
+                  </span>
+                </div>
+              )}
               {error && (
                 <p className="mt-3 flex items-center gap-2 text-sm text-red-700">
                   <AlertCircle className="size-4 shrink-0" />
@@ -169,11 +199,14 @@ export function BookingModal({
                 <ShieldCheck className="size-4" />
                 {loading
                   ? "Processing…"
-                  : `Book instantly · ${formatRate(slot.coach.hourlyRate)}`}
+                  : willCharge
+                    ? `Continue to checkout · ${formatRate(slot.coach.hourlyRate)}`
+                    : `Book instantly · ${formatRate(slot.coach.hourlyRate)}`}
               </button>
               <p className="mt-2 text-center text-xs text-slate-400">
-                You&apos;ll get {slot.coach.name.split(" ")[0]}&apos;s contact
-                details right after booking.
+                {willCharge
+                  ? `You'll get ${slot.coach.name.split(" ")[0]}'s contact details right after payment.`
+                  : `You'll get ${slot.coach.name.split(" ")[0]}'s contact details right after booking.`}
               </p>
             </>
           ) : (
@@ -232,7 +265,9 @@ export function BookingModal({
             </a>
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Paid {formatRate(result.pricePaid)} · Payment simulated (MVP)
+            {paymentsEnabled
+              ? formatRate(result.pricePaid)
+              : `Paid ${formatRate(result.pricePaid)} · Payment simulated (MVP)`}
           </p>
           <div className="mt-4 flex gap-2">
             <button onClick={close} className={`${btnSecondary} flex-1`}>
