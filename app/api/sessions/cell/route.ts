@@ -9,6 +9,7 @@ import {
   coachSessionStarts,
 } from "@/lib/availability";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
+import { bookableCoachWhere } from "@/lib/bookable";
 
 // Returns the coaches available in one viewer-local hour, honoring the same
 // firm/focus/price filters. Powers the calendar cell modal (fetch-on-click).
@@ -37,11 +38,7 @@ export async function GET(request: Request) {
   const focus = searchParams.get("focus") ?? "";
   const price = searchParams.get("price") ?? "";
 
-  const where: Prisma.CoachWhereInput = {
-    isActive: true,
-    meetingUrl: { not: null },
-    meetingPlatform: { not: null },
-  };
+  const where: Prisma.CoachWhereInput = bookableCoachWhere();
   if (firm && isFirm(firm)) where.firm = firm;
   if (focus && isFocusKey(focus)) where.focusAreas = { contains: `"${focus}"` };
   const bucket = priceBucket(price);
@@ -67,7 +64,7 @@ export async function GET(request: Request) {
   const booked = await prisma.booking.findMany({
     where: {
       startTime: { gte: start, lt: cellEnd },
-      status: "CONFIRMED",
+      status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
       coachId: { in: candidates.map((c) => c.coach.id) },
     },
     select: { coachId: true, startTime: true },

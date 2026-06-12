@@ -11,6 +11,7 @@ import { bookingWindow, coachSessionStarts } from "@/lib/availability";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
 import { cardClass } from "@/lib/ui";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
+import { isCoachPayable } from "@/lib/bookable";
 import type { SlotView } from "@/lib/types";
 
 async function getCoach(idParam: string) {
@@ -41,7 +42,8 @@ export default async function CoachPage({
   if (!coach || !coach.isActive) notFound();
 
   // Availability is only shown publicly once the coach has set a meeting room.
-  const bookable = Boolean(coach.meetingUrl && coach.meetingPlatform);
+  const bookable =
+    Boolean(coach.meetingUrl && coach.meetingPlatform) && isCoachPayable(coach);
   const now = new Date();
   const viewerTz = await getViewerTimeZone();
   let slotViews: SlotView[] = [];

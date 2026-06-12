@@ -9,17 +9,14 @@ import {
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { CoachCard } from "@/components/CoachCard";
+import { bookableCoachWhere } from "@/lib/bookable";
 import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 
 export default async function HomePage() {
   // Only coaches who've configured a meeting room are bookable, so the homepage
   // never features a coach a visitor can't actually book (mirrors /sessions).
   const featured = await prisma.coach.findMany({
-    where: {
-      isActive: true,
-      meetingUrl: { not: null },
-      meetingPlatform: { not: null },
-    },
+    where: bookableCoachWhere(),
     take: 3,
     orderBy: { createdAt: "asc" },
   });

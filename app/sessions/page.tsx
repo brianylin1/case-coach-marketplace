@@ -8,6 +8,7 @@ import { SessionCalendar } from "@/components/SessionCalendar";
 import { SessionBrowser } from "@/components/SessionBrowser";
 import { toSessionView } from "@/lib/serialize";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
+import { bookableCoachWhere } from "@/lib/bookable";
 import { FIRMS, isFirm, isFocusKey, priceBucket } from "@/lib/constants";
 import {
   BOOKING_HORIZON_DAYS,
@@ -45,12 +46,9 @@ export default async function SessionsPage({
   const now = new Date();
   const { lower, upper } = bookingWindow(now, viewerTz);
 
-  // Only coaches who've configured a meeting room are bookable / shown.
-  const coachWhere: Prisma.CoachWhereInput = {
-    isActive: true,
-    meetingUrl: { not: null },
-    meetingPlatform: { not: null },
-  };
+  // Active coaches with a meeting room — and, when payments are on, able to be
+  // paid (paid coaches need payouts enabled; pro bono never need Stripe).
+  const coachWhere: Prisma.CoachWhereInput = bookableCoachWhere();
   if (firm && isFirm(firm)) coachWhere.firm = firm;
   if (focus && isFocusKey(focus)) {
     coachWhere.focusAreas = { contains: `"${focus}"` };
@@ -77,7 +75,10 @@ export default async function SessionsPage({
   const [user, bookings] = await Promise.all([
     getCurrentUser(),
     prisma.booking.findMany({
-      where: { status: "CONFIRMED", startTime: { gte: lower, lt: upper } },
+      where: {
+        status: { in: ["CONFIRMED", "PENDING_PAYMENT"] },
+        startTime: { gte: lower, lt: upper },
+      },
       select: { coachId: true, startTime: true },
     }),
   ]);
