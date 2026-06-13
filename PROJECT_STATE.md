@@ -1,23 +1,34 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. **Last updated after PR #10 (Coach Trust MVP), merged
-> and deployed to production.**
+> as the project evolves. **Last updated after PR #12 (Stripe payments Phase 1) —
+> Stripe validated end-to-end in test mode; not yet live.**
 >
 > **Production:** live at **https://www.downtocase.com** (primary domain; the
 > apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
 > still resolves). Branch `main`, auto-deployed by Vercel. **Latest deployed
-> commit: `8076143`** (merge of PR #10; smoke-tested in prod and healthy).
-> Current model = timezone-correct booking (PR #3) + calendar invites reusing a
-> **coach-provided meeting room** (PR #5) + **live "Down to Case" booking email**
-> (Resend on the verified `downtocase.com` domain, PRs #6–#7) + a **true student
-> preferences edit form** (PR #9) + **coach trust signals & curated pricing**
-> (PR #10). Payments still **simulated**; **no auto-generated video** (Jitsi removed).
+> commit: `572bd6a`** (merge of PR #12; healthy). Model = timezone-correct booking
+> (PR #3) + coach-provided meeting room + invites (PR #5) + live "Down to Case"
+> booking email (PRs #6–#7) + student preferences edit (PR #9) + coach trust
+> signals & curated pricing (PR #10) + **"Down to Case" homepage rebrand &
+> candidate-first positioning (PR #11)** + **Stripe payments Phase 1 (PR #12,
+> dormant)**. **No auto-generated video** (Jitsi removed).
 >
-> ⚠️ **Session handoff:** PR #10 is fully deployed and validated. **Do not start
-> new feature work** without an explicit go-ahead — propose an approach first
-> (see §9). The photo-**upload** UI (Vercel Blob) is planned but **not built**;
-> only the `photoUrl` column + `Avatar` rendering + initials fallback exist.
+> 💳 **Stripe Phase 1 status:** merged + deployed but **DORMANT behind
+> `PAYMENTS_ENABLED`** (unset in prod ⇒ payments OFF; production behaves exactly
+> as the simulated MVP). **Validated end-to-end in TEST mode** via a Vercel
+> preview: ✅ Connect Express onboarding · ✅ Stripe Checkout · ✅ test payment
+> succeeded · ✅ booking confirmed. **Not yet live.** Still **un-exercised:** the
+> Stripe webhook and the payout-release cron/transfer (test confirmed via the
+> success-page reconcile-on-return, not the webhook). A Connect error-handling fix
+> is **pending in PR #13** (not yet merged to `main`). See `docs/stripe-phase1.md`.
+>
+> ⚠️ **Session handoff / next priority:** **coach onboarding — a unified
+> "Get booking-ready" checklist** on the coach dashboard (designed & approved, not
+> yet built; consolidates the meeting-room + payouts banners, surfaces
+> availability; no schema change). **Do not start new feature work** without an
+> explicit go-ahead. Deferred for now (operator): taxes, refunds, disputes,
+> accounting, live rollout.
 
 ---
 
@@ -64,7 +75,11 @@ set availability once; students book a time in a couple of clicks).
   `docs/stripe-phase1.md`. Flag off ⇒ bookings confirm instantly via
   `lib/payments.ts#processPayment` exactly as before. `Booking` carries the
   payment + payout fields; `Coach` carries `stripeAccountId` /
-  `stripePayoutsEnabled`.
+  `stripePayoutsEnabled`. **Validated in test mode** (Vercel preview, test keys):
+  ✅ Connect Express onboarding, ✅ Checkout, ✅ test payment, ✅ booking
+  confirmed. **Not yet exercised:** the Stripe webhook and the payout-release
+  cron/transfer (confirmation went through the success-page reconcile-on-return).
+  A Connect error-handling fix is **pending in PR #13** (not yet on `main`).
 
 ---
 
@@ -329,7 +344,8 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Mobile:** the calendar is horizontal-scroll, not a dedicated single-day
   view. Functional but not ideal. (Modals are proper bottom sheets.)
 - **Ratings:** placeholder only ("New · no ratings yet"); no reviews system.
-- **Payments:** simulated; no real Stripe; no coach payouts.
+- **Payments:** simulated in prod (Stripe Phase 1 built + validated in test,
+  dormant behind `PAYMENTS_ENABLED`); no live charges/payouts yet.
 - **Auth:** passwordless signed cookie — anyone with an email can sign in. No
   verification/OAuth. Not production-grade.
 - **Meeting rooms:** coach-provided and only *format*-validated (any `https://`
@@ -380,8 +396,10 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 **Done:** ~~Timezone (PR #3)~~ · ~~Meeting rooms + invites (PR #5)~~ ·
 ~~"Down to Case" email live (PRs #6–#7)~~ · ~~Student preferences edit form
-(PR #9)~~ · ~~Coach Trust MVP — positioning, credibility, curated pricing
-(PR #10)~~.
+(PR #9)~~ · ~~Coach Trust MVP (PR #10)~~ · ~~"Down to Case" homepage rebrand &
+candidate-first positioning (PR #11)~~ · ~~Stripe payments Phase 1: built, merged
+dormant, validated end-to-end in test mode (PR #12; webhook + payout-release still
+to validate; Connect error fix pending in PR #13)~~.
 
 **Current bottlenecks** (from the PR #10 production smoke test, 2026‑06‑11):
 - **Supply is the binding constraint** — production has **~1 bookable coach**
@@ -390,28 +408,34 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Trust fields are empty in prod** — everything renders as the fallback until
   coaches populate best-for / cases / current-former / photo, and there is **no
   photo-upload UI** to capture headshots yet.
-- Payments are **simulated** (no revenue); auth is **not production-grade**
+- Payments are **simulated in production** (Stripe Phase 1 is built + validated
+  in test, but dormant ⇒ no revenue yet); auth is **not production-grade**
   (passwordless, anyone with an email can sign in).
 
 **Recommended next priorities** (confirm with the operator before building):
-1. **Photo upload (Vercel Blob) + a coach "complete your profile" nudge** — the
-   planned follow-on to PR #10; activates the trust UI by getting coaches to set
-   photo / best-for / cases / current-former / meeting room. Scoped plan: add
-   `@vercel/blob`, an auth'd `app/api/coaches/photo` upload route, a
-   `<PhotoUpload>` component wired into the coach form (reuse the existing
-   `photoUrl` column — **no schema change**), provision a Blob store +
-   `BLOB_READ_WRITE_TOKEN`. Ship as a **separate PR**.
-2. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
-3. **Payments (Stripe)** — real charges + payouts (Stripe Connect) behind
-   `lib/payments.ts`, once there's booking volume.
-4. **Then:** mobile single-day calendar view; reschedule/cancel
-   (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); real ratings/reviews (replace the
-   placeholder); GTM (analytics, reminders, SEO).
+1. **Coach onboarding — unified "Get booking-ready" checklist** *(next; designed
+   & approved, not yet built).* One card atop the coach dashboard listing the
+   required steps (profile ✓, rate ✓, meeting room, **availability**, connect
+   payouts) with progress, one-click CTAs, a green "ready to accept bookings"
+   state, and a clear "what's blocking" line; consolidates today's meeting-room +
+   payouts banners; **no schema change** (derives from existing fields). Cuts
+   silent coach drop-off (esp. coaches who never paint availability). Separate PR
+   off `main`; ships safely with payments off.
+2. **Finish Stripe Phase 1 → live rollout** — validate the **webhook** and the
+   **payout-release cron/transfer** in test, merge the PR #13 Connect fix to
+   `main`, then the live migration (live Connect activation, live keys/webhook,
+   reset test Connect ids, flip `PAYMENTS_ENABLED`). See `docs/stripe-phase1.md`.
+   *(Operator deferred taxes / refunds / disputes / accounting for now.)*
+3. **Photo upload (Vercel Blob) + profile polish** — PR #10 follow-on that
+   activates the trust UI (reuses the `photoUrl` column; **no schema change**).
+4. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
+5. **Then:** mobile single-day calendar; reschedule/cancel
+   (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); real ratings/reviews; GTM.
 
-> 🚫 **No new feature work should be started from the session that shipped PR
-> #10** — its mandate ended at "deploy + validate PR #10 + hand off." A fresh
-> session should pick the next priority **with the operator**, propose an
-> approach, and wait for approval before coding.
+> 🚫 **Don't start new feature work without an explicit operator go-ahead** —
+> propose an approach first and wait for approval. The immediate next build is
+> the coach **"Get booking-ready" checklist** (#1 above), already designed &
+> approved with the operator.
 
 ---
 
