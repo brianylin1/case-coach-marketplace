@@ -1,18 +1,19 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. **Last updated after PR #12 (Stripe payments Phase 1) —
-> Stripe validated end-to-end in test mode; not yet live.**
+> as the project evolves. **Last updated after PR #15 (coach onboarding — the
+> "Get booking-ready" checklist), merged & deployed to production.**
 >
 > **Production:** live at **https://www.downtocase.com** (primary domain; the
 > apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
 > still resolves). Branch `main`, auto-deployed by Vercel. **Latest deployed
-> commit: `572bd6a`** (merge of PR #12; healthy). Model = timezone-correct booking
-> (PR #3) + coach-provided meeting room + invites (PR #5) + live "Down to Case"
-> booking email (PRs #6–#7) + student preferences edit (PR #9) + coach trust
-> signals & curated pricing (PR #10) + **"Down to Case" homepage rebrand &
-> candidate-first positioning (PR #11)** + **Stripe payments Phase 1 (PR #12,
-> dormant)**. **No auto-generated video** (Jitsi removed).
+> commit: `8ada8e0`** (merge of PR #15; smoke-tested in prod and healthy). Model =
+> timezone-correct booking (PR #3) + coach-provided meeting room + invites (PR #5)
+> + live "Down to Case" booking email (PRs #6–#7) + student preferences edit
+> (PR #9) + coach trust signals & curated pricing (PR #10) + **"Down to Case"
+> homepage rebrand & candidate-first positioning (PR #11)** + **Stripe payments
+> Phase 1 (PR #12, dormant)** + **coach "Get booking-ready" checklist (PR #15)**.
+> **No auto-generated video** (Jitsi removed).
 >
 > 💳 **Stripe Phase 1 status:** merged + deployed but **DORMANT behind
 > `PAYMENTS_ENABLED`** (unset in prod ⇒ payments OFF; production behaves exactly
@@ -20,14 +21,15 @@
 > preview: ✅ Connect Express onboarding · ✅ Stripe Checkout · ✅ test payment
 > succeeded · ✅ booking confirmed. **Not yet live.** Still **un-exercised:** the
 > Stripe webhook and the payout-release cron/transfer (test confirmed via the
-> success-page reconcile-on-return, not the webhook). A Connect error-handling fix
-> is **pending in PR #13** (not yet merged to `main`). See `docs/stripe-phase1.md`.
+> success-page reconcile-on-return, not the webhook). The Connect error-handling
+> fix **merged (PR #13)**. See `docs/stripe-phase1.md`.
 >
-> ⚠️ **Session handoff / next priority:** **coach onboarding — a unified
-> "Get booking-ready" checklist** on the coach dashboard (designed & approved, not
-> yet built; consolidates the meeting-room + payouts banners, surfaces
-> availability; no schema change). **Do not start new feature work** without an
-> explicit go-ahead. Deferred for now (operator): taxes, refunds, disputes,
+> ✅ **Session handoff:** the coach **"Get booking-ready" checklist** (PR #15) is
+> **shipped, deployed, and smoke-tested in production** — one card atop the coach
+> dashboard that leads with booking status, surfaces **availability** as a required
+> step, and consolidates the old meeting-room + payouts banners (no schema change).
+> **Do not start new feature work** without an explicit operator go-ahead — propose
+> an approach first (see §9). Deferred for now (operator): taxes, refunds, disputes,
 > accounting, live rollout.
 
 ---
@@ -79,7 +81,7 @@ set availability once; students book a time in a couple of clicks).
   ✅ Connect Express onboarding, ✅ Checkout, ✅ test payment, ✅ booking
   confirmed. **Not yet exercised:** the Stripe webhook and the payout-release
   cron/transfer (confirmation went through the success-page reconcile-on-return).
-  A Connect error-handling fix is **pending in PR #13** (not yet on `main`).
+  The Connect error-handling fix **merged (PR #13)**.
 
 ---
 
@@ -165,15 +167,30 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 
 - **Coach onboarding / edit** (`/signup/coach`; doubles as the prefilled edit
   form when a coach is logged in): name, email, firm, title, years, headline,
-  bio, focus areas, a **curated hourly-rate dropdown** (`COACH_RATES`: pro bono /
-  $40–$250; a legacy off-list rate is preserved on edit), availability text,
-  **timezone**, LinkedIn, an optional **"How you coach"** block (best-for select,
-  cases-coached range, Current/Former-at-firm toggle — all clicks, no writing),
-  and a **required "Meeting Information"** section (platform + URL, optional ID /
-  passcode / instructions). Passwordless; a logged-in coach updates by session id
-  (never duplicates). **A coach is not bookable — and their availability is
-  hidden — until a meeting room is configured.** *(No profile-photo field yet —
-  photo upload is a planned follow-on.)*
+  bio, focus areas, a **required, curated hourly-rate dropdown** (`COACH_RATES`:
+  pro bono / $40–$250 — an explicit pick incl. "Pro bono (free)" since PR #15, so
+  no coach lands silently at $0; a legacy off-list rate is preserved on edit),
+  availability text, **timezone**, LinkedIn, an optional **"How you coach"** block
+  (best-for select, cases-coached range, Current/Former-at-firm toggle — all
+  clicks, no writing), and a **required "Meeting Information"** section (platform +
+  URL, optional ID / passcode / instructions). Passwordless; a logged-in coach
+  updates by session id (never duplicates). **A coach is not bookable — and their
+  availability is hidden — until a meeting room is configured.** *(No profile-photo
+  field yet — photo upload is a planned follow-on.)*
+- **Coach booking-readiness checklist** (coach dashboard, PR #15): a single
+  **"Get booking-ready"** card atop the dashboard that **leads with booking
+  status** — `Not bookable yet` (amber, with a `{done} of {total} done` counter)
+  or `You're ready to accept bookings` (green) — and lists only the gates that
+  actually block bookings: **availability**, **meeting room**, and — only when
+  `PAYMENTS_ENABLED` **and** the coach charges — **Stripe payouts** (hidden for pro
+  bono coaches and whenever payments are off). Each incomplete step has a one-line
+  "why" + an action; the first incomplete gets the primary CTA ("Set hours" anchors
+  to the on-page grid; "Add room" deep-links the meeting section; payouts reuses
+  `ConnectPayoutsButton`). Replaces the old meeting-room + payouts banners and the
+  white-out grid overlay (now a slim caption). Optional profile polish (LinkedIn /
+  best-for / cases / headline) stays **separate**, surfacing only once bookable
+  (photo omitted — no upload UI). Derives from existing fields — **no schema
+  change**. Lives in `components/BookingReadiness.tsx`.
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
   (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
   click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
@@ -198,8 +215,8 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   Join + Google/Outlook/`.ics`; `GET /api/bookings/[id]/ics` serves the invite to
   either party.
 - **Dashboards:** student = upcoming booked sessions + coach contact + profile
-  summary; coach = availability grid + booked sessions (with student contact) +
-  stats (hrs/week, upcoming, booked value).
+  summary; coach = **"Get booking-ready" checklist (PR #15)** + availability grid +
+  booked sessions (with student contact) + stats (hrs/week, upcoming, booked value).
 - **Student preferences edit** (PR #9): the dashboard "Update preferences" link
   opens `/signup/student` as a **true edit form** — prefilled, email read-only,
   "Save changes" CTA, returns to `/dashboard`; the API pins a logged-in student's
@@ -332,6 +349,47 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   follow-on). **Untouched:** booking, availability, timezone, email/ICS,
   meeting-room gating, auth, payments.
 
+- **PR #11 — "Down to Case homepage rebrand & candidate-first positioning"**
+  *(merged into `main`).* Rebranded the marketing homepage to "Down to Case" with
+  candidate-first copy/positioning. Marketing surface only — no app logic changes.
+
+- **PR #12 — "Stripe payments — Phase 1 (dark, behind `PAYMENTS_ENABLED`)"**
+  *(merged into `main` — dormant).* Full Stripe Phase 1: student **Checkout**,
+  **Connect Express** onboarding, funds held on the platform until after the
+  session, delayed payout via a daily release cron, three webhooks, bookable
+  gating for paid coaches, and success/cancel pages — all behind `PAYMENTS_ENABLED`
+  (off in prod ⇒ simulated MVP behavior). Additive schema (Stripe/payout fields on
+  `Booking`; `stripeAccountId` / `stripePayoutsEnabled` on `Coach`). Validated
+  end-to-end in test mode; webhook + payout-release cron still un-exercised. See
+  `docs/stripe-phase1.md`.
+
+- **PR #13 — "Surface Connect onboarding errors (Stripe)"** *(merged into `main`).*
+  `ConnectPayoutsButton` now parses responses defensively and surfaces a real error
+  (incl. HTTP status) instead of an opaque "Unexpected end of JSON input".
+
+- **PR #14 — "docs: PROJECT_STATE — Stripe Phase 1 test-mode validation"**
+  *(merged).* Docs only.
+
+- **PR #15 — "Coach onboarding: unified 'Get booking-ready' checklist"**
+  *(merged into `main` — current production, commit `8ada8e0`).* Replaced the two
+  stacked coach-dashboard banners (meeting-room + Stripe payouts) and the
+  white-out availability-grid overlay with a single **`BookingReadiness`** card
+  that **leads with booking status** (`Not bookable yet` / `You're ready to accept
+  bookings`) + a `{done} of {total} done` counter, listing only the gates that
+  actually block bookings: **availability**, **meeting room**, and — only when
+  `PAYMENTS_ENABLED` **and** the coach charges — **Stripe payouts** (hidden for pro
+  bono coaches and when payments are off). Each incomplete step shows a one-line
+  "why"; the **first incomplete gets the primary CTA** ("Set hours" anchors to the
+  on-page grid; "Add room" deep-links the form's meeting section; payouts reuses
+  `ConnectPayoutsButton`). Optional profile polish (LinkedIn / best-for / cases /
+  headline) stays **separate**, surfacing only once bookable (photo omitted — no
+  upload UI). Also: the slim grid caption replaces the overlay, the aside's
+  `⚠ Not configured` alarm is softened to "Not added yet", the "no bookings" empty
+  state reflects bookability, and the **hourly-rate dropdown is now a required,
+  explicit choice** at signup/edit (incl. "Pro bono (free)") so coaches never land
+  silently at $0. **No schema change** (derives from existing fields). **Untouched:**
+  booking, availability, timezone, email/ICS, meeting-room gating, auth, payments.
+
 ---
 
 ## 7. Known limitations
@@ -399,12 +457,14 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 (PR #9)~~ · ~~Coach Trust MVP (PR #10)~~ · ~~"Down to Case" homepage rebrand &
 candidate-first positioning (PR #11)~~ · ~~Stripe payments Phase 1: built, merged
 dormant, validated end-to-end in test mode (PR #12; webhook + payout-release still
-to validate; Connect error fix pending in PR #13)~~.
+to validate; Connect error fix merged in PR #13)~~ · ~~Coach onboarding —
+"Get booking-ready" checklist (PR #15)~~.
 
 **Current bottlenecks** (from the PR #10 production smoke test, 2026‑06‑11):
-- **Supply is the binding constraint** — production has **~1 bookable coach**
-  ("12 open sessions across 1 coach"). The trust UI only pays off with coaches to
-  compare; existing prod coaches stay unbookable until they configure a meeting room.
+- **Supply is the binding constraint** — production has **~1 bookable coach**.
+  The new **"Get booking-ready" checklist (PR #15)** now guides each coach to the
+  exact gates (availability + meeting room) and should cut silent drop-off, but
+  existing prod coaches still have to complete those steps to become bookable.
 - **Trust fields are empty in prod** — everything renders as the fallback until
   coaches populate best-for / cases / current-former / photo, and there is **no
   photo-upload UI** to capture headshots yet.
@@ -413,29 +473,23 @@ to validate; Connect error fix pending in PR #13)~~.
   (passwordless, anyone with an email can sign in).
 
 **Recommended next priorities** (confirm with the operator before building):
-1. **Coach onboarding — unified "Get booking-ready" checklist** *(next; designed
-   & approved, not yet built).* One card atop the coach dashboard listing the
-   required steps (profile ✓, rate ✓, meeting room, **availability**, connect
-   payouts) with progress, one-click CTAs, a green "ready to accept bookings"
-   state, and a clear "what's blocking" line; consolidates today's meeting-room +
-   payouts banners; **no schema change** (derives from existing fields). Cuts
-   silent coach drop-off (esp. coaches who never paint availability). Separate PR
-   off `main`; ships safely with payments off.
-2. **Finish Stripe Phase 1 → live rollout** — validate the **webhook** and the
-   **payout-release cron/transfer** in test, merge the PR #13 Connect fix to
-   `main`, then the live migration (live Connect activation, live keys/webhook,
-   reset test Connect ids, flip `PAYMENTS_ENABLED`). See `docs/stripe-phase1.md`.
-   *(Operator deferred taxes / refunds / disputes / accounting for now.)*
-3. **Photo upload (Vercel Blob) + profile polish** — PR #10 follow-on that
-   activates the trust UI (reuses the `photoUrl` column; **no schema change**).
-4. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
-5. **Then:** mobile single-day calendar; reschedule/cancel
+1. **Finish Stripe Phase 1 → live rollout** — validate the **webhook** and the
+   **payout-release cron/transfer** in test (the Connect error fix is already on
+   `main`, PR #13), then the live migration (live Connect activation, live
+   keys/webhook, reset test Connect ids, flip `PAYMENTS_ENABLED`). See
+   `docs/stripe-phase1.md`. *(Operator deferred taxes / refunds / disputes /
+   accounting for now.)*
+2. **Photo upload (Vercel Blob) + profile polish** — PR #10 follow-on that
+   activates the trust UI (reuses the `photoUrl` column; **no schema change**). The
+   checklist's optional-polish strip already links these fields once a coach is live.
+3. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
+4. **Then:** mobile single-day calendar; reschedule/cancel
    (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); real ratings/reviews; GTM.
 
 > 🚫 **Don't start new feature work without an explicit operator go-ahead** —
-> propose an approach first and wait for approval. The immediate next build is
-> the coach **"Get booking-ready" checklist** (#1 above), already designed &
-> approved with the operator.
+> propose an approach first and wait for approval. The coach **"Get booking-ready"
+> checklist** shipped in PR #15; the next build (likely finishing Stripe Phase 1)
+> should be picked **with the operator**, not assumed.
 
 ---
 
