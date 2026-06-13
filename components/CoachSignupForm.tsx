@@ -93,6 +93,10 @@ export function CoachSignupForm({
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    if (hourlyRate === "") {
+      setError("Choose your hourly rate — pick “Pro bono (free)” if you coach for free.");
+      return;
+    }
     if (!meetingPlatform || !/^https?:\/\/\S+/i.test(meetingUrl.trim())) {
       setError("Add your meeting platform and a valid meeting URL — students need it to join your sessions.");
       return;
@@ -366,6 +370,7 @@ export function CoachSignupForm({
             className={`${inputClass} mt-1.5`}
             value={hourlyRate}
             onChange={(e) => setHourlyRate(e.target.value)}
+            required
           >
             <option value="" disabled>
               Select a rate…
