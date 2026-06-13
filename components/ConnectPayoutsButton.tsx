@@ -19,9 +19,21 @@ export function ConnectPayoutsButton({
     setError(null);
     try {
       const res = await fetch("/api/stripe/connect", { method: "POST" });
-      const data = (await res.json()) as { url?: string; error?: string };
+      // Parse defensively: an empty/non-JSON body must not surface as the
+      // opaque "Unexpected end of JSON input".
+      const text = await res.text();
+      let data: { url?: string; error?: string } = {};
+      if (text) {
+        try {
+          data = JSON.parse(text) as { url?: string; error?: string };
+        } catch {
+          // leave data empty; fall through to a status-based message
+        }
+      }
       if (!res.ok || !data.url) {
-        throw new Error(data.error ?? "Could not start Stripe onboarding.");
+        throw new Error(
+          data.error ?? `Could not start Stripe onboarding (HTTP ${res.status}).`,
+        );
       }
       window.location.href = data.url;
     } catch (e) {
