@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarClock, Inbox, Mail, Search } from "lucide-react";
+import { AlertCircle, CalendarClock, Inbox, Mail, Search } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { Avatar } from "@/components/Avatar";
@@ -18,7 +18,7 @@ import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { stripeConfigured } from "@/lib/stripe";
 import { syncConnectAccount } from "@/lib/connect";
-import { ConnectPayoutsButton } from "@/components/ConnectPayoutsButton";
+import { BookingReadiness, type PolishItem } from "@/components/BookingReadiness";
 
 export const metadata: Metadata = {
   title: "Your dashboard · Down to Case",
@@ -229,6 +229,19 @@ async function CoachDashboard({
   }
   const needsPayouts = PAYMENTS_ENABLED && coach.hourlyRate > 0 && !payoutsEnabled;
 
+  const hasAvailability = initialCellKeys.length > 0;
+  const isBookable = hasAvailability && hasMeetingInfo && !needsPayouts;
+
+  // Optional profile polish — kept separate from the booking-readiness gates and
+  // surfaced only once the coach is live. Photo is intentionally omitted (no
+  // upload UI yet). Each chip deep-links to the edit form.
+  const polish: PolishItem[] = [
+    !coach.linkedinUrl && { key: "linkedin", label: "Add LinkedIn" },
+    !coach.bestFor && { key: "bestFor", label: "Set what you're best for" },
+    !coach.casesCoached && { key: "casesCoached", label: "Add cases coached" },
+    !coach.headline && { key: "headline", label: "Write a headline" },
+  ].filter(Boolean) as PolishItem[];
+
   return (
     <Shell
       title={`Welcome, ${coach.name.split(" ")[0]}`}
@@ -239,29 +252,17 @@ async function CoachDashboard({
         </Link>
       }
     >
-      {!hasMeetingInfo && (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-amber-900">
-            ⚠️ Add your reusable Teams, Zoom, or Google Meet room before students
-            can book you.
-          </p>
-          <Link href="/signup/coach?section=meeting" className={`${btnPrimary} shrink-0`}>
-            Configure Meeting Room
-          </Link>
-        </div>
-      )}
-      {needsPayouts && (
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-300 bg-indigo-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm font-medium text-indigo-900">
-            💳 Connect payouts with Stripe so students can book your paid
-            sessions. You&apos;re paid automatically after each session.
-          </p>
-          <ConnectPayoutsButton
-            className={`${btnPrimary} shrink-0`}
-            label={coach.stripeAccountId ? "Finish payout setup" : "Connect payouts"}
-          />
-        </div>
-      )}
+      <BookingReadiness
+        hasAvailability={hasAvailability}
+        availabilityHours={initialCellKeys.length}
+        hasMeeting={hasMeetingInfo}
+        meetingPlatform={coach.meetingPlatform}
+        paymentsEnabled={PAYMENTS_ENABLED}
+        hourlyRate={coach.hourlyRate}
+        payoutsEnabled={payoutsEnabled}
+        hasStripeAccount={Boolean(coach.stripeAccountId)}
+        polish={polish}
+      />
       <div className="mb-6 grid grid-cols-3 gap-4">
         <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
         <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
@@ -270,32 +271,15 @@ async function CoachDashboard({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <div className="relative">
-            <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
+          <div id="availability" className="scroll-mt-20">
             {!hasMeetingInfo && (
-              // Visual gate only — pointer-events-none lets the coach keep
-              // editing/saving the grid underneath; just the CTA is clickable.
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-white/60 p-4">
-                <div className="max-w-sm rounded-xl border border-amber-300 bg-white p-4 text-center shadow-lg">
-                  <span className="text-2xl" aria-hidden>
-                    ⚠️
-                  </span>
-                  <p className="mt-1 font-semibold text-slate-900">
-                    Add your meeting room before students can book these times.
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    You can still plan availability, but it will stay hidden from
-                    students until your meeting room is configured.
-                  </p>
-                  <Link
-                    href="/signup/coach?section=meeting"
-                    className={`${btnPrimary} pointer-events-auto mt-3`}
-                  >
-                    Configure Meeting Room
-                  </Link>
-                </div>
-              </div>
+              <p className="mb-2 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <AlertCircle className="size-4 shrink-0" />
+                Heads up: your availability stays hidden from students until you add a
+                meeting room.
+              </p>
             )}
+            <AvailabilityGrid initialCellKeys={initialCellKeys} timezone={coach.timezone} />
           </div>
         </div>
 
@@ -341,7 +325,7 @@ async function CoachDashboard({
                   </p>
                 </div>
               ) : (
-                <span className="font-medium text-amber-700">⚠ Not configured</span>
+                <span className="text-slate-400">Not added yet</span>
               )}
             </Field>
             <Field label="Coaches on">
@@ -363,7 +347,11 @@ async function CoachDashboard({
         {bookings.length === 0 ? (
           <EmptyState
             title="No bookings yet"
-            body="Paint a few green hours above — students can book them instantly, and they'll show up here."
+            body={
+              isBookable
+                ? "When a student books one of your open times, it'll show up here."
+                : "Finish the steps in “Not bookable yet” above to start accepting bookings — they'll show up here."
+            }
             cta={null}
           />
         ) : (
