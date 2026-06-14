@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { AlertCircle, CalendarClock, Inbox, Mail, Search } from "lucide-react";
@@ -19,6 +20,7 @@ import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { stripeConfigured } from "@/lib/stripe";
 import { syncConnectAccount } from "@/lib/connect";
 import { BookingReadiness, type PolishItem } from "@/components/BookingReadiness";
+import { ShareYourPage } from "@/components/ShareYourPage";
 
 export const metadata: Metadata = {
   title: "Your dashboard · Down to Case",
@@ -232,6 +234,17 @@ async function CoachDashboard({
   const hasAvailability = initialCellKeys.length > 0;
   const isBookable = hasAvailability && hasMeetingInfo && !needsPayouts;
 
+  // Absolute, shareable URL for the coach's public page — resolved from the
+  // request host so it works across prod and previews without extra config.
+  const h = await headers();
+  const host = h.get("host") ?? "www.downtocase.com";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const bookingUrl = `${proto}://${host}/coaches/${coach.id}`;
+
+  // Only claim "pay online" when it's actually true: payments live AND the coach
+  // charges. Pro bono coaches and the payments-off world get the plain version.
+  const canPayOnline = PAYMENTS_ENABLED && coach.hourlyRate > 0;
+
   // Optional profile polish — kept separate from the booking-readiness gates and
   // surfaced only once the coach is live. Photo is intentionally omitted (no
   // upload UI yet). Each chip deep-links to the edit form.
@@ -263,6 +276,15 @@ async function CoachDashboard({
         hasStripeAccount={Boolean(coach.stripeAccountId)}
         polish={polish}
       />
+      {isBookable && (
+        <ShareYourPage
+          bookingUrl={bookingUrl}
+          firm={coach.firm}
+          title={coach.title}
+          firmStatus={coach.firmStatus}
+          canPayOnline={canPayOnline}
+        />
+      )}
       <div className="mb-6 grid grid-cols-3 gap-4">
         <Stat label="Hrs/week" value={`${initialCellKeys.length}`} accent="indigo" />
         <Stat label="Upcoming" value={`${bookings.length}`} accent="emerald" />
