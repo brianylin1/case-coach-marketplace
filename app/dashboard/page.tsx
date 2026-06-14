@@ -241,6 +241,10 @@ async function CoachDashboard({
   const proto = h.get("x-forwarded-proto") ?? "https";
   const bookingUrl = `${proto}://${host}/coaches/${coach.id}`;
 
+  // Only claim "pay online" when it's actually true: payments live AND the coach
+  // charges. Pro bono coaches and the payments-off world get the plain version.
+  const canPayOnline = PAYMENTS_ENABLED && coach.hourlyRate > 0;
+
   // Optional profile polish — kept separate from the booking-readiness gates and
   // surfaced only once the coach is live. Photo is intentionally omitted (no
   // upload UI yet). Each chip deep-links to the edit form.
@@ -278,6 +282,7 @@ async function CoachDashboard({
           firm={coach.firm}
           title={coach.title}
           firmStatus={coach.firmStatus}
+          canPayOnline={canPayOnline}
         />
       )}
       <div className="mb-6 grid grid-cols-3 gap-4">

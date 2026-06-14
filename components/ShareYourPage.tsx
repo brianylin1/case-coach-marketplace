@@ -23,11 +23,13 @@ export function ShareYourPage({
   firm,
   title,
   firmStatus,
+  canPayOnline,
 }: {
   bookingUrl: string;
   firm: string;
   title: string;
   firmStatus: string | null;
+  canPayOnline: boolean;
 }) {
   const display = bookingUrl.replace(/^https?:\/\//, "");
 
@@ -68,7 +70,9 @@ Recruiting this cycle? Come get your reps in.`;
       </p>
       <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
         <Zap className="size-4 shrink-0 text-indigo-500" />
-        Students can book you instantly and pay online.
+        {canPayOnline
+          ? "Students can book you instantly and pay online."
+          : "Students can book you instantly."}
       </p>
 
       {/* Booking link + copy */}
