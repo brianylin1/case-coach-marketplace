@@ -1,18 +1,19 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. **Last updated after PR #15 (coach onboarding — the
-> "Get booking-ready" checklist), merged & deployed to production.**
+> as the project evolves. **Last updated after PR #17 (coach dashboard — the
+> "Share your booking page" card), merged & deployed to production.**
 >
 > **Production:** live at **https://www.downtocase.com** (primary domain; the
 > apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
 > still resolves). Branch `main`, auto-deployed by Vercel. **Latest deployed
-> commit: `8ada8e0`** (merge of PR #15; smoke-tested in prod and healthy). Model =
+> commit: `8b19ac3`** (merge of PR #17; production smoke-tested and healthy). Model =
 > timezone-correct booking (PR #3) + coach-provided meeting room + invites (PR #5)
 > + live "Down to Case" booking email (PRs #6–#7) + student preferences edit
 > (PR #9) + coach trust signals & curated pricing (PR #10) + **"Down to Case"
 > homepage rebrand & candidate-first positioning (PR #11)** + **Stripe payments
-> Phase 1 (PR #12, dormant)** + **coach "Get booking-ready" checklist (PR #15)**.
+> Phase 1 (PR #12, dormant)** + **coach "Get booking-ready" checklist (PR #15)** +
+> **coach "Share your booking page" card (PR #17)**.
 > **No auto-generated video** (Jitsi removed).
 >
 > 💳 **Stripe Phase 1 status:** merged + deployed but **DORMANT behind
@@ -24,13 +25,19 @@
 > success-page reconcile-on-return, not the webhook). The Connect error-handling
 > fix **merged (PR #13)**. See `docs/stripe-phase1.md`.
 >
-> ✅ **Session handoff:** the coach **"Get booking-ready" checklist** (PR #15) is
-> **shipped, deployed, and smoke-tested in production** — one card atop the coach
-> dashboard that leads with booking status, surfaces **availability** as a required
-> step, and consolidates the old meeting-room + payouts banners (no schema change).
-> **Do not start new feature work** without an explicit operator go-ahead — propose
-> an approach first (see §9). Deferred for now (operator): taxes, refunds, disputes,
-> accounting, live rollout.
+> ✅ **Session handoff:** the coach **"Share your booking page" card** (PR #17) is
+> **shipped, deployed, and production smoke-tested healthy** — a deliberately minimal
+> coach-distribution **experiment** on the coach dashboard: the coach's public link
+> with one-tap **Copy link**, **Preview your page**, and ready-to-paste **DM +
+> LinkedIn** messages, shown only once a coach is bookable (reuses the `isBookable`
+> gate). The value line is accurate to payments state (no "pay online" while payments
+> are off or for pro bono). **No schema, API, or payments changes; no tracking.**
+> **Now in a measure-first posture:** the operator wants to talk to coaches and observe
+> whether they actually share their page before investing in more distribution features
+> (vanity URLs, OG images, photo upload, broader coach growth tooling). **Do not start
+> new feature work** without an explicit operator go-ahead — propose an approach first
+> (see §9). Deferred for now (operator): taxes, refunds, disputes, accounting, live
+> rollout.
 
 ---
 
@@ -191,6 +198,17 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   best-for / cases / headline) stays **separate**, surfacing only once bookable
   (photo omitted — no upload UI). Derives from existing fields — **no schema
   change**. Lives in `components/BookingReadiness.tsx`.
+- **Coach "Share your booking page" card** (coach dashboard, PR #17): a single card
+  that appears **once a coach is bookable** (reuses the existing `isBookable` gate),
+  handing them their public profile URL with one-tap **Copy link**, **Preview your
+  page** (new tab), and **ready-to-paste DM + LinkedIn messages** (templated from
+  firm/title with graceful fallback). Leads with *"Most coaches get their first
+  booking by sharing this page with someone who has already asked for help"*; the
+  value line reads *"…and pay online"* only when `PAYMENTS_ENABLED` **and** the coach
+  charges, else just *"Students can book you instantly."* A minimal coach-distribution
+  **experiment** to learn whether coaches actively distribute their page — **no
+  schema/API change, no tracking**. Lives in `components/ShareYourPage.tsx`; the
+  absolute URL is resolved server-side from the request host in `app/dashboard/page.tsx`.
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
   (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
   click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
@@ -390,6 +408,21 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   silently at $0. **No schema change** (derives from existing fields). **Untouched:**
   booking, availability, timezone, email/ICS, meeting-room gating, auth, payments.
 
+- **PR #17 — "Coach dashboard: 'Share your booking page' card (distribution
+  experiment)"** *(merged into `main` — current production, commit `8b19ac3`).* A
+  deliberately minimal first step toward **coach-driven distribution**: a
+  `ShareYourPage` card on the coach dashboard (rendered below `BookingReadiness`,
+  gated on the existing `isBookable`) with **Copy link**, **Preview your page**,
+  **Copy DM message**, and **Copy LinkedIn post** (templated from firm/title with a
+  graceful fallback when `firmStatus` is unset). The shareable URL is resolved
+  **server-side** from the request host (`headers()`), so it's correct across
+  prod/previews with no client-side URL math (no hydration mismatch). The value
+  statement is gated to the real payments state (`PAYMENTS_ENABLED && hourlyRate > 0`),
+  so production never implies live payments while they're off. **Hypothesis under
+  test:** will bookable coaches actively distribute their page? **Explicitly out of
+  scope** (by design): vanity URLs, OG images, photo upload, analytics/click tracking,
+  referral systems. **No schema, API, booking, payments, or availability changes.**
+
 ---
 
 ## 7. Known limitations
@@ -458,7 +491,8 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 candidate-first positioning (PR #11)~~ · ~~Stripe payments Phase 1: built, merged
 dormant, validated end-to-end in test mode (PR #12; webhook + payout-release still
 to validate; Connect error fix merged in PR #13)~~ · ~~Coach onboarding —
-"Get booking-ready" checklist (PR #15)~~.
+"Get booking-ready" checklist (PR #15)~~ · ~~Coach "Share your booking page" card —
+distribution experiment (PR #17)~~.
 
 **Current bottlenecks** (from the PR #10 production smoke test, 2026‑06‑11):
 - **Supply is the binding constraint** — production has **~1 bookable coach**.
