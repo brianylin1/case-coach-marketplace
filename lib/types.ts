@@ -45,5 +45,5 @@ export type CalendarCell = {
   dayKey: string;
   hour: number; // 0–23 (UTC)
   count: number; // coaches available
-  firms: string[]; // distinct firms present, ordered McKinsey/Bain/BCG/Other
+  firms: string[]; // distinct firms present, ordered by the FIRMS list
 };
