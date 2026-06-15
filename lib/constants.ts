@@ -1,15 +1,46 @@
 // Shared domain constants. Safe to import from both client and server components.
 
-export const FIRMS = ["McKinsey", "Bain", "BCG", "Other"] as const;
+// Single source of truth for the firm taxonomy. Coach.firm and
+// Student.targetFirms store these as plain strings; isFirm() validates on write.
+// A value no longer in the list still renders (firmStyle falls back to neutral),
+// so the taxonomy can change with no data migration.
+export const FIRMS = [
+  "McKinsey",
+  "Bain",
+  "BCG",
+  "EY-Parthenon",
+  "Strategy&",
+  "Kearney",
+  "Oliver Wyman",
+  "LEK",
+  "Roland Berger",
+  "Simon-Kucher",
+  "AlixPartners",
+  "Deloitte",
+  "PwC",
+  "EY",
+  "KPMG",
+  "Accenture",
+  "IBM Consulting",
+  "Other",
+] as const;
 export type Firm = (typeof FIRMS)[number];
 
 export function isFirm(value: string): value is Firm {
   return (FIRMS as readonly string[]).includes(value);
 }
 
-// Tailwind classes per firm, loosely echoing each firm's brand color.
-// `short` is a compact monogram; `text` is a low-emphasis text color for dense
-// UI (calendar cells). These are plain text abbreviations, not logos.
+// Tailwind classes per firm. `short` is a compact monogram for dense UI
+// (calendar cells); `text`/`badge`/`dot` color the chips. MBB keep brand-ish
+// colors; the rest share a neutral slate and are told apart by their monogram —
+// which keeps the calendar legible as the taxonomy grows. Plain text, not logos.
+// Typed Record<Firm, …> so the compiler enforces an entry for every firm.
+const NEUTRAL = {
+  text: "text-slate-600",
+  badge: "bg-slate-100 text-slate-700 ring-slate-600/20",
+  dot: "bg-slate-400",
+} as const;
+
 export const FIRM_STYLES: Record<
   Firm,
   { short: string; text: string; badge: string; dot: string }
@@ -17,6 +48,20 @@ export const FIRM_STYLES: Record<
   McKinsey: { short: "McK", text: "text-blue-600", badge: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-600" },
   Bain: { short: "Bain", text: "text-red-600", badge: "bg-red-50 text-red-700 ring-red-600/20", dot: "bg-red-600" },
   BCG: { short: "BCG", text: "text-emerald-600", badge: "bg-emerald-50 text-emerald-700 ring-emerald-600/20", dot: "bg-emerald-600" },
+  "EY-Parthenon": { short: "EY-P", ...NEUTRAL },
+  "Strategy&": { short: "S&", ...NEUTRAL },
+  Kearney: { short: "Kear", ...NEUTRAL },
+  "Oliver Wyman": { short: "OW", ...NEUTRAL },
+  LEK: { short: "LEK", ...NEUTRAL },
+  "Roland Berger": { short: "RB", ...NEUTRAL },
+  "Simon-Kucher": { short: "SK", ...NEUTRAL },
+  AlixPartners: { short: "Alix", ...NEUTRAL },
+  Deloitte: { short: "Del", ...NEUTRAL },
+  PwC: { short: "PwC", ...NEUTRAL },
+  EY: { short: "EY", ...NEUTRAL },
+  KPMG: { short: "KPMG", ...NEUTRAL },
+  Accenture: { short: "Acc", ...NEUTRAL },
+  "IBM Consulting": { short: "IBM", ...NEUTRAL },
   Other: { short: "Other", text: "text-slate-500", badge: "bg-slate-100 text-slate-700 ring-slate-600/20", dot: "bg-slate-500" },
 };
 
