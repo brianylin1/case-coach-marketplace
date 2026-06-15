@@ -1,43 +1,44 @@
 # CaseCoach — Project State
 
 > Living snapshot of the product, architecture, and roadmap. Keep this updated
-> as the project evolves. **Last updated after PR #17 (coach dashboard — the
-> "Share your booking page" card), merged & deployed to production.**
+> as the project evolves. **Last updated after PR #22 — Stripe payments are now
+> LIVE in production (first real paid booking completed end-to-end).**
 >
 > **Production:** live at **https://www.downtocase.com** (primary domain; the
 > apex `downtocase.com` 308-redirects to `www`; `case-coach-marketplace.vercel.app`
 > still resolves). Branch `main`, auto-deployed by Vercel. **Latest deployed
-> commit: `8b19ac3`** (merge of PR #17; production smoke-tested and healthy). Model =
+> commit: `0585db7`** (merge of PR #22; production smoke-tested and healthy). Model =
 > timezone-correct booking (PR #3) + coach-provided meeting room + invites (PR #5)
 > + live "Down to Case" booking email (PRs #6–#7) + student preferences edit
 > (PR #9) + coach trust signals & curated pricing (PR #10) + **"Down to Case"
 > homepage rebrand & candidate-first positioning (PR #11)** + **Stripe payments
-> Phase 1 (PR #12, dormant)** + **coach "Get booking-ready" checklist (PR #15)** +
-> **coach "Share your booking page" card (PR #17)**.
+> Phase 1 — now LIVE (PR #12 + go-live)** + **coach "Get booking-ready" checklist
+> (PR #15)** + **coach "Share your booking page" card (PR #17)** + **booking-modal
+> timezone label (PR #18)** + **$5 lowest paid rate (PR #19)** + **calendar-RSVP &
+> email reply-to fixes (PRs #20–#21)** + **"Manage payouts on Stripe" (PR #22)**.
 > **No auto-generated video** (Jitsi removed).
 >
-> 💳 **Stripe Phase 1 status:** merged + deployed but **DORMANT behind
-> `PAYMENTS_ENABLED`** (unset in prod ⇒ payments OFF; production behaves exactly
-> as the simulated MVP). **Validated end-to-end in TEST mode** via a Vercel
-> preview: ✅ Connect Express onboarding · ✅ Stripe Checkout · ✅ test payment
-> succeeded · ✅ booking confirmed. **Not yet live.** Still **un-exercised:** the
-> Stripe webhook and the payout-release cron/transfer (test confirmed via the
-> success-page reconcile-on-return, not the webhook). The Connect error-handling
-> fix **merged (PR #13)**. See `docs/stripe-phase1.md`.
+> 💳 **Stripe payments: LIVE in production** (`PAYMENTS_ENABLED=true`, live keys +
+> live Connect Express). **First real paid booking completed end-to-end** — Stripe
+> charge succeeded, booking confirmed, calendar invite + email delivered. Live env:
+> live `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `CRON_SECRET`,
+> `PLATFORM_FEE_BPS=1500`, `PAYOUT_HOLD_HOURS=24`. **Still unproven in live:** the
+> **coach payout-release transfer** (first one releases ~24h after a session via the
+> daily cron — not yet observed end-to-end live). Booking confirmation has two paths
+> (the Stripe **webhook** and a success-page **reconcile-on-return** backstop).
+> Rollback = `PAYMENTS_ENABLED=false` (instant revert to simulated). See
+> `docs/stripe-phase1.md` + `docs/stripe-go-live.md`.
 >
-> ✅ **Session handoff:** the coach **"Share your booking page" card** (PR #17) is
-> **shipped, deployed, and production smoke-tested healthy** — a deliberately minimal
-> coach-distribution **experiment** on the coach dashboard: the coach's public link
-> with one-tap **Copy link**, **Preview your page**, and ready-to-paste **DM +
-> LinkedIn** messages, shown only once a coach is bookable (reuses the `isBookable`
-> gate). The value line is accurate to payments state (no "pay online" while payments
-> are off or for pro bono). **No schema, API, or payments changes; no tracking.**
-> **Now in a measure-first posture:** the operator wants to talk to coaches and observe
-> whether they actually share their page before investing in more distribution features
-> (vanity URLs, OG images, photo upload, broader coach growth tooling). **Do not start
-> new feature work** without an explicit operator go-ahead — propose an approach first
-> (see §9). Deferred for now (operator): taxes, refunds, disputes, accounting, live
-> rollout.
+> ✅ **Session handoff:** **live payments shipped** — `PAYMENTS_ENABLED=true` with
+> live Stripe keys + Connect, and a **first real paid booking** went through
+> end-to-end. Since the prior handoff: booking-modal timezone label (PR #18), $5
+> lowest paid tier (PR #19), calendar-RSVP organizer fix (PR #20), email reply-to fix
+> (PR #21), and the coach **"Manage payouts on Stripe"** entry point (PR #22) — all
+> merged & deployed. **Next phase is GTM, not engineering:** coach acquisition + user
+> feedback. **Do not start new product work** without an explicit operator go-ahead.
+> Still open (operator-deferred): observing a live coach **payout-release** transfer,
+> wiring the Stripe **webhook** (success-page reconcile is the current backstop),
+> refunds / cancellations / disputes tooling, and production-grade auth.
 
 ---
 
@@ -54,8 +55,8 @@ set availability once; students book a time in a couple of clicks).
 **Core user flows:**
 - **Student:** land on `/sessions` → scan a weekly calendar of open times →
   click a time → compare the coaches free then (grouped by firm) → **Book
-  instantly** (simulated payment) → coach contact is revealed → track in
-  dashboard.
+  instantly** (Stripe Checkout for paid coaches; pro bono confirms instantly) →
+  coach contact is revealed → track in dashboard.
 - **Coach:** sign up → **paint a weekly availability grid** → bookings arrive
   automatically → see booked sessions + student contact in dashboard.
 
@@ -77,18 +78,17 @@ set availability once; students book a time in a couple of clicks).
 - **Auth:** lightweight **passwordless** signed-cookie sessions (HMAC over
   `{role,id}`) in `lib/session.ts`; `getCurrentUser()` is the server-only helper.
   Not production-grade — placeholder for magic-link/OAuth.
-- **Payments:** **SIMULATED in production today.** A full **Stripe Phase 1**
-  implementation (Checkout + Connect Express + funds held on the platform until
-  after the session, released by a daily transfer cron) ships **behind
-  `PAYMENTS_ENABLED` (default off; not yet enabled in prod)** — see
-  `docs/stripe-phase1.md`. Flag off ⇒ bookings confirm instantly via
-  `lib/payments.ts#processPayment` exactly as before. `Booking` carries the
-  payment + payout fields; `Coach` carries `stripeAccountId` /
-  `stripePayoutsEnabled`. **Validated in test mode** (Vercel preview, test keys):
-  ✅ Connect Express onboarding, ✅ Checkout, ✅ test payment, ✅ booking
-  confirmed. **Not yet exercised:** the Stripe webhook and the payout-release
-  cron/transfer (confirmation went through the success-page reconcile-on-return).
-  The Connect error-handling fix **merged (PR #13)**.
+- **Payments:** **LIVE in production** (`PAYMENTS_ENABLED=true`, live keys + live
+  Connect Express). Students pay via Stripe **Checkout**; the charge settles to the
+  platform and the coach's share (after a 15% fee, `PLATFORM_FEE_BPS=1500`) is
+  transferred ~24h after the session by a daily release cron. `Booking` carries the
+  payment + payout fields; `Coach` carries `stripeAccountId` / `stripePayoutsEnabled`;
+  coaches manage their account via a login link to the hosted Express dashboard
+  (PR #22). With the flag off, bookings confirm instantly via
+  `lib/payments.ts#processPayment` (simulated) — the rollback path. **First real paid
+  booking validated end-to-end;** not yet observed live: the coach payout-release
+  transfer. Connect error-handling fix **merged (PR #13)**. See `docs/stripe-phase1.md`
+  + `docs/stripe-go-live.md`.
 
 ---
 
@@ -109,8 +109,9 @@ set availability once; students book a time in a couple of clicks).
 - **Email (Resend):** booking email is **live in production** via Resend on the
   verified **`downtocase.com`** domain. Sends from **`bookings@downtocase.com`**
   (sender display name **"Down to Case"** from `EMAIL_FROM`); the `.ics`
-  `ORGANIZER` email comes from `EMAIL_FROM_ADDRESS`. Support/replies go to
-  **`support@downtocase.com`**, which forwards to the operator's inbox. Sending is
+  `ORGANIZER` and the email **`Reply-To`** are **`support@downtocase.com`** (PRs
+  #20–#21), a real mailbox that forwards to the operator — so calendar RSVPs and
+  replies reach a person instead of bouncing off the send-only `bookings@`. Sending is
   gated to `VERCEL_ENV=production` (or `EMAIL_FORCE_SEND=1` locally), so previews
   don't email real people.
 - **Neon:** free-tier Postgres. Use the **pooled** connection string (host
@@ -175,8 +176,9 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Coach onboarding / edit** (`/signup/coach`; doubles as the prefilled edit
   form when a coach is logged in): name, email, firm, title, years, headline,
   bio, focus areas, a **required, curated hourly-rate dropdown** (`COACH_RATES`:
-  pro bono / $40–$250 — an explicit pick incl. "Pro bono (free)" since PR #15, so
-  no coach lands silently at $0; a legacy off-list rate is preserved on edit),
+  pro bono / **$5** / $40–$250 — the $5 floor added in PR #19 for low-exposure live
+  tests; an explicit pick incl. "Pro bono (free)" since PR #15, so no coach lands
+  silently at $0; a legacy off-list rate is preserved on edit),
   availability text, **timezone**, LinkedIn, an optional **"How you coach"** block
   (best-for select, cases-coached range, Current/Former-at-firm toggle — all
   clicks, no writing), and a **required "Meeting Information"** section (platform +
@@ -209,6 +211,13 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   **experiment** to learn whether coaches actively distribute their page — **no
   schema/API change, no tracking**. Lives in `components/ShareYourPage.tsx`; the
   absolute URL is resolved server-side from the request host in `app/dashboard/page.tsx`.
+- **Coach "Manage payouts on Stripe"** (coach dashboard, PR #22): a persistent link
+  shown whenever a coach has a `stripeAccountId` (any payout status) that opens their
+  Stripe-hosted **Express dashboard** via a single-use login link
+  (`accounts.createLoginLink`) — for bank/tax updates, required verification, and
+  restricted-account recovery, with no custom forms. The management endpoint
+  (`/api/stripe/login-link`) is **separate** from onboarding (`/api/stripe/connect`).
+  Lives in `components/ManagePayoutsButton.tsx`.
 - **Availability grid** (coach dashboard): When2Meet-style weekly paint grid
   (Mon–Sun × 7am–10pm) **in the coach's own timezone** (labelled as such),
   click-and-drag to add/erase (mouse + touch), saved as `AvailabilityBlock`s via
@@ -221,8 +230,10 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   per-cell coaches fetched on click via `GET /api/sessions/cell` (matches any
   coach with a session inside that local hour, so half-hour offsets work).
   **Calendar | List** toggle (`?view=`).
-- **Booking flow:** click a time → coach modal → review + **simulated payment**
-  → confirmation reveals coach contact. `POST /api/bookings { coachId, startTime }`
+- **Booking flow:** click a time → coach modal → review (session time labeled in the
+  viewer's local zone, PR #18) → **Stripe Checkout** for paid coaches (pro bono /
+  payments-off confirm instantly) → confirmation reveals coach contact.
+  `POST /api/bookings { coachId, startTime }`
   validates the time is inside the coach's blocks and not taken; unique constraint
   guards double-booking, and the coach must have a configured meeting room. On
   success it **snapshots the coach's meeting details** (platform / URL / ID /
@@ -423,6 +434,37 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   scope** (by design): vanity URLs, OG images, photo upload, analytics/click tracking,
   referral systems. **No schema, API, booking, payments, or availability changes.**
 
+- **PR #18 — "Phase A: booking-modal timezone label + Stripe go-live runbook"**
+  *(merged into `main`).* The booking confirmation modal now shows the session time
+  with the viewer's local-zone label (e.g. `EDT` / `GMT+5:30`) + a "Shown in your
+  local time" caption, removing timezone ambiguity at the payment-commit moment. Also
+  added `docs/stripe-go-live.md` (the live-payments runbook). No booking/payments/
+  Stripe logic changes.
+
+- **PR #19 — "Add $5 lowest paid coaching rate"** *(merged into `main`).* Added `5`
+  to `COACH_RATES` so coaches can offer a $5/hr session (for a low-exposure first
+  live payment). Pro bono + all existing tiers unchanged; single-line change.
+
+- **PR #20 — "Fix calendar RSVP bounce (ICS organizer → support@)"** *(merged into
+  `main`).* The `.ics` `ORGANIZER` was set from `EMAIL_FROM_ADDRESS`
+  (`bookings@downtocase.com`, a send-only sender), so Gmail RSVPs bounced
+  (`550 address does not exist`). Point the organizer at `SUPPORT_EMAIL`
+  (`support@downtocase.com`, a real mailbox). One line in `lib/ics.ts`.
+
+- **PR #21 — "Set booking email Reply-To to support@"** *(merged into `main`).*
+  Same root cause on the email side: booking emails had no `Reply-To`, so replies
+  defaulted to the send-only `bookings@`. Added `replyTo: SUPPORT_EMAIL` to both
+  Resend sends. Email-path only.
+
+- **PR #22 — "Coach 'Manage payouts on Stripe' entry point"** *(merged into `main`
+  — current production, commit `0585db7`).* A persistent coach-dashboard link (shown
+  whenever a coach has a `stripeAccountId`, any payout status) that opens their
+  Stripe-hosted Express dashboard via a single-use login link, for bank/tax updates,
+  verification, and restricted-account recovery — no custom forms. New
+  `/api/stripe/login-link` (management) kept **separate** from `/api/stripe/connect`
+  (onboarding); added `createExpressLoginLink` in `lib/connect.ts` +
+  `components/ManagePayoutsButton.tsx`. No booking/payment/payout/cron changes.
+
 ---
 
 ## 7. Known limitations
@@ -435,8 +477,13 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 - **Mobile:** the calendar is horizontal-scroll, not a dedicated single-day
   view. Functional but not ideal. (Modals are proper bottom sheets.)
 - **Ratings:** placeholder only ("New · no ratings yet"); no reviews system.
-- **Payments:** simulated in prod (Stripe Phase 1 built + validated in test,
-  dormant behind `PAYMENTS_ENABLED`); no live charges/payouts yet.
+- **Payments:** **LIVE** (`PAYMENTS_ENABLED=true`, live keys + Connect); first real
+  paid booking validated end-to-end. **Not yet observed live:** a coach
+  **payout-release** transfer (fires ~24h post-session via the daily cron). The
+  Stripe **webhook isn't wired up** in prod — booking confirmation relies on the
+  success-page **reconcile-on-return** (a paid-but-never-returned booking would need a
+  manual reconcile). Refunds / cancellations / disputes are **manual** via the Stripe
+  dashboard (no in-app tooling).
 - **Auth:** passwordless signed cookie — anyone with an email can sign in. No
   verification/OAuth. Not production-grade.
 - **Meeting rooms:** coach-provided and only *format*-validated (any `https://`
@@ -452,7 +499,9 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   local runs don't send. Each booking sends two emails (student + coach); if the
   second fails, the booking's `emailStatus` is marked `FAILED` even if the first
   was delivered. Coach-provided fields are HTML-escaped in email and RFC-escaped in
-  the ICS. No reschedule/cancel updates (`METHOD:CANCEL`/`SEQUENCE`) yet.
+  the ICS. The `.ics` `ORGANIZER` and email `Reply-To` now point to
+  `support@downtocase.com` (PRs #20–#21), so calendar RSVPs and replies don't bounce.
+  No reschedule/cancel updates (`METHOD:CANCEL`/`SEQUENCE`) yet.
 - **Coach trust (PR #10):** fields are **optional and self-reported** (no
   verification). **Existing prod coaches have them empty**, so production renders
   the **fallback** everywhere (derived "Best for", neutral credential, no
@@ -488,11 +537,12 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
 **Done:** ~~Timezone (PR #3)~~ · ~~Meeting rooms + invites (PR #5)~~ ·
 ~~"Down to Case" email live (PRs #6–#7)~~ · ~~Student preferences edit form
 (PR #9)~~ · ~~Coach Trust MVP (PR #10)~~ · ~~"Down to Case" homepage rebrand &
-candidate-first positioning (PR #11)~~ · ~~Stripe payments Phase 1: built, merged
-dormant, validated end-to-end in test mode (PR #12; webhook + payout-release still
-to validate; Connect error fix merged in PR #13)~~ · ~~Coach onboarding —
-"Get booking-ready" checklist (PR #15)~~ · ~~Coach "Share your booking page" card —
-distribution experiment (PR #17)~~.
+candidate-first positioning (PR #11)~~ · ~~Coach onboarding — "Get booking-ready"
+checklist (PR #15)~~ · ~~Coach "Share your booking page" card (PR #17)~~ ·
+~~**Stripe payments LIVE in production** (PR #12 + go-live; first real paid
+booking)~~ · ~~booking-modal timezone label (PR #18)~~ · ~~$5 lowest paid tier
+(PR #19)~~ · ~~calendar-RSVP + email reply-to fixes (PRs #20–#21)~~ · ~~"Manage
+payouts on Stripe" (PR #22)~~.
 
 **Current bottlenecks** (from the PR #10 production smoke test, 2026‑06‑11):
 - **Supply is the binding constraint** — production has **~1 bookable coach**.
@@ -502,28 +552,28 @@ distribution experiment (PR #17)~~.
 - **Trust fields are empty in prod** — everything renders as the fallback until
   coaches populate best-for / cases / current-former / photo, and there is **no
   photo-upload UI** to capture headshots yet.
-- Payments are **simulated in production** (Stripe Phase 1 is built + validated
-  in test, but dormant ⇒ no revenue yet); auth is **not production-grade**
-  (passwordless, anyone with an email can sign in).
+- Payments are **LIVE in production** (real charges + payouts enabled; first real
+  booking done) — the binding constraint is now **coach acquisition / liquidity**,
+  not payments. Auth remains **not production-grade** (passwordless).
 
 **Recommended next priorities** (confirm with the operator before building):
-1. **Finish Stripe Phase 1 → live rollout** — validate the **webhook** and the
-   **payout-release cron/transfer** in test (the Connect error fix is already on
-   `main`, PR #13), then the live migration (live Connect activation, live
-   keys/webhook, reset test Connect ids, flip `PAYMENTS_ENABLED`). See
-   `docs/stripe-phase1.md`. *(Operator deferred taxes / refunds / disputes /
-   accounting for now.)*
-2. **Photo upload (Vercel Blob) + profile polish** — PR #10 follow-on that
-   activates the trust UI (reuses the `photoUrl` column; **no schema change**). The
-   checklist's optional-polish strip already links these fields once a coach is live.
-3. **Coach supply / acquisition** — outreach + onboarding; liquidity matters most.
-4. **Then:** mobile single-day calendar; reschedule/cancel
-   (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); real ratings/reviews; GTM.
+1. **Coach acquisition + user feedback (GTM)** — the binding constraint now that
+   payments are live. Recruit the first cohort of real coaches; watch whether they
+   activate, share their page, and get booked. *(Operator's stated next phase — not
+   engineering.)*
+2. **Observe a live coach payout** — confirm the first payout-release transfer fires
+   ~24h post-session in live, and consider wiring the Stripe **webhook** (currently
+   relying on the success-page reconcile-on-return backstop).
+3. **Refunds / cancellations** — manual via the Stripe dashboard today; add minimal
+   in-app tooling once volume warrants.
+4. **Then:** photo upload (Vercel Blob) + profile polish; mobile single-day calendar;
+   reschedule/cancel (`METHOD:CANCEL`/`SEQUENCE` ICS + re-notify); ratings/reviews;
+   production-grade auth.
 
-> 🚫 **Don't start new feature work without an explicit operator go-ahead** —
-> propose an approach first and wait for approval. The coach **"Get booking-ready"
-> checklist** shipped in PR #15; the next build (likely finishing Stripe Phase 1)
-> should be picked **with the operator**, not assumed.
+> 🚫 **Don't start new product work without an explicit operator go-ahead** —
+> propose an approach first and wait for approval. Live payments shipped (PR #22 +
+> go-live); the operator's stated next phase is **coach acquisition + user feedback,
+> not engineering.**
 
 ---
 
