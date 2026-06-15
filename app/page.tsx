@@ -51,10 +51,10 @@ export default async function HomePage() {
               Book a mock case
             </Link>
             <Link
-              href="#how-it-works"
+              href="/for-coaches"
               className={`${btnSecondary} px-5 py-3 text-base`}
             >
-              See how it works
+              Become a coach
             </Link>
           </div>
           <p className="mt-8 text-sm font-medium text-slate-700">
@@ -227,7 +227,7 @@ export default async function HomePage() {
             href="/for-coaches"
             className={`${btnSecondary} shrink-0 px-5 py-2.5`}
           >
-            Get your link
+            Become a coach
             <ArrowRight className="size-4" />
           </Link>
         </div>
