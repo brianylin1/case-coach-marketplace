@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isEmail, str, strList } from "@/lib/validation";
+import { hashPassword, passwordError } from "@/lib/password";
 import { isFirm, isFocusKey } from "@/lib/constants";
 
 // Create or update a student profile and sign them in.
@@ -49,17 +50,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ id: student.id, role: "student" });
   }
 
-  // Fresh signup: email is the identity key.
+  // Fresh signup: email is the identity key, and a password is now required.
   const email = str(body.email, 200).toLowerCase();
+  const password = typeof body.password === "string" ? body.password : "";
   if (!isEmail(email)) {
     return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
   }
+  const pwError = passwordError(password);
+  if (pwError) {
+    return NextResponse.json({ error: pwError }, { status: 400 });
+  }
 
-  const student = await prisma.student.upsert({
-    where: { email },
-    update: data,
-    create: { email, ...data },
-  });
+  // Don't silently overwrite an existing account (that used to be possible via
+  // upsert-by-email). Send them to sign in, where an unclaimed account is
+  // prompted to set a password.
+  const existing = await prisma.student.findUnique({ where: { email } });
+  if (existing) {
+    return NextResponse.json(
+      { error: "An account with this email already exists. Please sign in." },
+      { status: 409 },
+    );
+  }
+
+  const passwordHash = await hashPassword(password);
+  const student = await prisma.student.create({ data: { email, passwordHash, ...data } });
 
   await setSession({ role: "student", id: student.id });
   return NextResponse.json({ id: student.id, role: "student" });

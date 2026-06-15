@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { setSession } from "@/lib/session";
 import { isEmail, str } from "@/lib/validation";
-import { verifyPassword } from "@/lib/password";
+import { hashPassword, passwordError } from "@/lib/password";
 
-// Email + password sign-in.
-//
-// Accounts created before passwords existed have a null passwordHash
-// ("unclaimed"). For those we don't fail the login — we return
-// { needsPassword: true } so the client can prompt the user to set one via
-// /api/auth/set-password. Once claimed, the password is required.
+// One-time password claim for a legacy/unclaimed account (passwordHash == null).
+// This is how existing users transition: they enter their email and choose a
+// password on next sign-in. It deliberately only works on an account that has
+// NO password yet — so it can't be used to reset an already-secured account
+// (that would need email-based recovery, which is out of scope by design).
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try {
@@ -20,7 +19,6 @@ export async function POST(request: Request) {
 
   const email = str(body.email, 200).toLowerCase();
   const role = body.role;
-  // Passwords are never trimmed — whitespace can be part of the secret.
   const password = typeof body.password === "string" ? body.password : "";
 
   if (!isEmail(email)) {
@@ -28,6 +26,10 @@ export async function POST(request: Request) {
   }
   if (role !== "student" && role !== "coach") {
     return NextResponse.json({ error: "Choose student or coach." }, { status: 400 });
+  }
+  const pwError = passwordError(password);
+  if (pwError) {
+    return NextResponse.json({ error: pwError }, { status: 400 });
   }
 
   const account =
@@ -41,14 +43,18 @@ export async function POST(request: Request) {
       { status: 404 },
     );
   }
-
-  // Legacy/unclaimed account: hand off to the set-a-password flow.
-  if (!account.passwordHash) {
-    return NextResponse.json({ needsPassword: true });
+  if (account.passwordHash) {
+    return NextResponse.json(
+      { error: "This account already has a password. Please sign in." },
+      { status: 409 },
+    );
   }
 
-  if (!password || !(await verifyPassword(password, account.passwordHash))) {
-    return NextResponse.json({ error: "Incorrect email or password." }, { status: 401 });
+  const passwordHash = await hashPassword(password);
+  if (role === "student") {
+    await prisma.student.update({ where: { id: account.id }, data: { passwordHash } });
+  } else {
+    await prisma.coach.update({ where: { id: account.id }, data: { passwordHash } });
   }
 
   await setSession({ role, id: account.id });

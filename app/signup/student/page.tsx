@@ -30,7 +30,7 @@ export default async function StudentSignupPage() {
   const heading = editing ? "Update your preferences" : "Find your case coach";
   const subtitle = editing
     ? "We'll use this information to help surface relevant coaches."
-    : "Create a free account — about a minute — then browse coaches right away. No password required.";
+    : "Create a free account — about a minute — then browse coaches right away.";
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">

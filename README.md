@@ -7,8 +7,8 @@ instantly** from open time slots.
 
 The product leads with *availability*: students start from open slots (the thing
 they actually care about), and coach details are secondary — revealed when you
-open a slot. Low friction throughout: no passwords, browsing is free, and
-booking takes two clicks.
+open a slot. Low friction throughout: browsing is free, sign-up is email +
+password, and booking takes two clicks.
 
 ---
 
@@ -34,7 +34,7 @@ booking takes two clicks.
 | Styling | Tailwind CSS v4 |
 | Icons | lucide-react |
 | Database | Postgres via Prisma 7 (`pg` driver adapter) |
-| Auth | Lightweight signed-cookie sessions (passwordless) |
+| Auth | Email + password (scrypt) + signed-cookie sessions |
 
 ## Quick start
 
@@ -51,14 +51,14 @@ You need a `DATABASE_URL` (Postgres). The quickest path is a free
 
 ### Try the demo accounts
 
-Sign in at `/login` (no password — just the email):
+Sign in at `/login`. Every seeded account uses the password **`casecoach123`**:
 
-| Role | Email |
-| --- | --- |
-| Coach | `maya.chen@coach.test` (has a booked session + open slots) |
-| Coach | `david.okafor@coach.test` |
-| Student | `jordan@student.test` (has an upcoming booking) |
-| Student | `sam@student.test` |
+| Role | Email | Password |
+| --- | --- | --- |
+| Coach | `maya.chen@coach.test` (has a booked session + open slots) | `casecoach123` |
+| Coach | `david.okafor@coach.test` | `casecoach123` |
+| Student | `jordan@student.test` (has an upcoming booking) | `casecoach123` |
+| Student | `sam@student.test` | `casecoach123` |
 
 The seed creates 8 coaches, ~40 open slots across the next week, and one sample
 booking so the dashboards aren't empty.
@@ -81,14 +81,14 @@ app/
   page.tsx              # Landing page
   sessions/             # "Find a session" — the slot-first marketplace
   coaches/[id]/         # Public coach profile + bookable slots
-  signup/student|coach  # Signup pages
-  login/                # Passwordless sign-in
+  signup/student|coach  # Signup pages (email + password)
+  login/                # Email + password sign-in (+ set-password for legacy accounts)
   dashboard/            # Role-aware dashboard (student bookings / coach availability)
   api/
     bookings/           # POST: book a slot (simulated payment)
     slots/              # POST add / DELETE remove a coach's slots
-    students, coaches/  # Signup
-    auth/               # Login / logout
+    students, coaches/  # Signup (creates the account + password)
+    auth/               # Login / logout / set-password (claim a legacy account)
   generated/prisma/     # Prisma client (generated; gitignored)
 components/             # SessionBrowser, SlotCard, BookingModal, AvailabilityEditor, Modal, …
 lib/
@@ -113,12 +113,23 @@ List-like fields (target firms, focus areas) are stored as JSON-string columns;
 `lib/format.ts` handles (de)serialization. Times are stored and formatted in
 **UTC** for determinism.
 
-## How auth works (and its limits)
+## How auth works
 
-Signup/login set a **signed (HMAC) cookie** holding `{ role, id }` — no passwords,
-to keep friction near zero. This is fine for a demo/MVP but **not**
-production-grade: anyone who knows an email can sign in as that user. Add real
-verification (magic links / OAuth) in front of `lib/session.ts` before launch.
+Auth is **email + password**. Passwords are hashed with **scrypt** (`node:crypto`,
+no extra dependency) and stored in `Student.passwordHash` / `Coach.passwordHash`;
+verification and hashing live in `lib/password.ts`. On success, signup/login set a
+**signed (HMAC) cookie** holding `{ role, id }` (`lib/session.ts`); `getCurrentUser()`
+resolves it to a DB row.
+
+**Transitioning legacy accounts:** the columns are nullable, so accounts created
+before passwords existed start "unclaimed" (`passwordHash = null`). The first time
+such a user signs in, the login form detects this and prompts them to **set a
+password** (`POST /api/auth/set-password`), which only works on an account that has
+no password yet. No reset emails, OTP, or magic links.
+
+> **Out of scope (by design):** self-serve "forgot password" (would need email-based
+> recovery). To reset a user, clear their `passwordHash` and they'll set a new one on
+> next sign-in.
 
 ## Adding Stripe (later)
 
