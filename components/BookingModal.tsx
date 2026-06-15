@@ -60,6 +60,17 @@ export function BookingModal({
   // Whether this booking will collect real money now (vs. instant/free path).
   const willCharge = paymentsEnabled && (slot?.coach.hourlyRate ?? 0) > 0;
 
+  // The viewer's local-zone abbreviation (e.g. "EDT", or "GMT+5:30" where there's
+  // no common name), shown next to the session time so the booking time is never
+  // ambiguous at the commit moment — especially when the coach is in another zone.
+  // Computed in the browser, so it reflects the viewer's actual zone. This subtree
+  // only renders after a click (slot is set client-side), so there's no SSR/hydration concern.
+  const tzAbbr = slot
+    ? (new Intl.DateTimeFormat(undefined, { timeZoneName: "short" })
+        .formatToParts(new Date(slot.startISO))
+        .find((p) => p.type === "timeZoneName")?.value ?? "")
+    : "";
+
   function close() {
     const booked = Boolean(result);
     setError(null);
@@ -137,8 +148,10 @@ export function BookingModal({
             )}
             <p className="mt-3 flex items-center gap-2 text-sm text-slate-700">
               <CalendarClock className="size-4 text-slate-400" />
-              {slot.dateLabel} · {slot.timeLabel} · {slot.durationMins} min
+              {slot.dateLabel} · {slot.timeLabel}
+              {tzAbbr ? ` ${tzAbbr}` : ""} · {slot.durationMins} min
             </p>
+            <p className="mt-1 pl-6 text-xs text-slate-400">Shown in your local time.</p>
             {slot.coach.linkedinUrl && (
               <a
                 href={slot.coach.linkedinUrl}
@@ -238,6 +251,7 @@ export function BookingModal({
           <p className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
             <CalendarClock className="size-4 text-slate-400" />
             {slot.dateLabel} · {slot.timeLabel}
+            {tzAbbr ? ` ${tzAbbr}` : ""}
           </p>
           <p className="mt-3 text-sm text-slate-600">
             Calendar invite sent to your email. It includes the meeting link and
