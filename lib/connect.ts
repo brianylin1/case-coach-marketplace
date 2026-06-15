@@ -18,3 +18,13 @@ export async function syncConnectAccount(
   });
   return enabled;
 }
+
+// Single-use URL to the coach's Stripe-hosted Express dashboard, where they
+// manage payouts, update bank/tax details, and complete any Stripe-required
+// verification. Onboarding stays separate (see /api/stripe/connect); this is
+// pure account management. Throws if the account hasn't submitted onboarding
+// details yet — the caller surfaces that as a friendly error.
+export async function createExpressLoginLink(accountId: string): Promise<string> {
+  const link = await getStripe().accounts.createLoginLink(accountId);
+  return link.url;
+}
