@@ -202,6 +202,7 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
     const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
       from: FROM,
+      replyTo: SUPPORT_EMAIL,
       to: input.student.email,
       subject: studentSubject,
       html: studentHtml,
@@ -209,6 +210,7 @@ export async function sendBookingEmails(input: BookingEmailInput): Promise<Email
     });
     await resend.emails.send({
       from: FROM,
+      replyTo: SUPPORT_EMAIL,
       to: input.coach.email,
       subject: coachSubject,
       html: coachHtml,
