@@ -4,6 +4,7 @@ import { getSession, setSession } from "@/lib/session";
 import { serializeList } from "@/lib/format";
 import { isValidTimeZone } from "@/lib/timezone";
 import { isEmail, nonNegativeInt, str, strList } from "@/lib/validation";
+import { hashPassword, passwordError } from "@/lib/password";
 import {
   isBestForKey,
   isCasesCoached,
@@ -107,9 +108,28 @@ export async function POST(request: Request) {
       ? session.id
       : null;
 
-  const coach = editingId
-    ? await prisma.coach.update({ where: { id: editingId }, data })
-    : await prisma.coach.upsert({ where: { email }, update: data, create: { email, ...data } });
+  let coach;
+  if (editingId) {
+    // Editing: identity is the session; email and password are left untouched.
+    coach = await prisma.coach.update({ where: { id: editingId }, data });
+  } else {
+    // Fresh signup: a password is now required, and we never overwrite an
+    // existing account by email — send them to sign in instead.
+    const password = typeof body.password === "string" ? body.password : "";
+    const pwError = passwordError(password);
+    if (pwError) {
+      return NextResponse.json({ error: pwError }, { status: 400 });
+    }
+    const existing = await prisma.coach.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "An account with this email already exists. Please sign in." },
+        { status: 409 },
+      );
+    }
+    const passwordHash = await hashPassword(password);
+    coach = await prisma.coach.create({ data: { email, passwordHash, ...data } });
+  }
 
   await setSession({ role: "coach", id: coach.id });
   return NextResponse.json({ id: coach.id, role: "coach" });

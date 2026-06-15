@@ -9,6 +9,10 @@ import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
 const FIRM_OPTIONS = FIRMS.map((f) => ({ key: f, label: f }));
 
+// Keep in sync with MIN_PASSWORD_LENGTH in lib/password.ts (server-enforced;
+// this is just for friendlier client-side feedback).
+const MIN_PASSWORD_LENGTH = 8;
+
 export type StudentFormValues = {
   name: string;
   email: string;
@@ -29,6 +33,8 @@ export function StudentSignupForm({
   const iv = initialValues ?? {};
   const [name, setName] = useState(iv.name ?? "");
   const [email, setEmail] = useState(iv.email ?? "");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [timeline, setTimeline] = useState(iv.timeline ?? "");
   const [goal, setGoal] = useState(iv.goal ?? "");
   const [targetFirms, setTargetFirms] = useState<string[]>(iv.targetFirms ?? []);
@@ -46,12 +52,23 @@ export function StudentSignupForm({
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    // New accounts choose a password; editing never touches it.
+    if (!editing) {
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+        return;
+      }
+      if (password !== confirm) {
+        setError("Passwords don't match.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, timeline, goal, targetFirms, focusAreas }),
+        body: JSON.stringify({ name, email, password, timeline, goal, targetFirms, focusAreas }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -103,6 +120,42 @@ export function StudentSignupForm({
           )}
         </div>
       </div>
+
+      {!editing && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              className={`${inputClass} mt-1.5`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="confirm">
+              Confirm password
+            </label>
+            <input
+              id="confirm"
+              type="password"
+              autoComplete="new-password"
+              className={`${inputClass} mt-1.5`}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter your password"
+              required
+            />
+          </div>
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Which firms are you targeting?</label>
@@ -161,7 +214,7 @@ export function StudentSignupForm({
       </button>
       {!editing && (
         <p className="text-center text-xs text-slate-400">
-          No password needed — we&apos;ll recognize you by email next time.
+          You&apos;ll use your email and password to sign in next time.
         </p>
       )}
     </form>

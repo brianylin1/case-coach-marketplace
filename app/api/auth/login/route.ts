@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { setSession } from "@/lib/session";
 import { isEmail, str } from "@/lib/validation";
+import { verifyPassword } from "@/lib/password";
 
-// Passwordless sign-in: look the email up in the chosen role's table.
+// Email + password sign-in. Every account sets a password at signup, so a
+// missing account and a wrong password collapse to the same "invalid
+// credentials" response (and we don't reveal which emails exist).
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try {
@@ -14,6 +17,8 @@ export async function POST(request: Request) {
 
   const email = str(body.email, 200).toLowerCase();
   const role = body.role;
+  // Passwords are never trimmed — whitespace can be part of the secret.
+  const password = typeof body.password === "string" ? body.password : "";
 
   if (!isEmail(email)) {
     return NextResponse.json({ error: "Please enter a valid email." }, { status: 400 });
@@ -22,25 +27,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Choose student or coach." }, { status: 400 });
   }
 
-  if (role === "student") {
-    const student = await prisma.student.findUnique({ where: { email } });
-    if (!student) {
-      return NextResponse.json(
-        { error: "No student account found for that email." },
-        { status: 404 },
-      );
-    }
-    await setSession({ role: "student", id: student.id });
-    return NextResponse.json({ id: student.id, role: "student" });
+  const account =
+    role === "student"
+      ? await prisma.student.findUnique({ where: { email } })
+      : await prisma.coach.findUnique({ where: { email } });
+
+  if (!account || !(await verifyPassword(password, account.passwordHash))) {
+    return NextResponse.json({ error: "Incorrect email or password." }, { status: 401 });
   }
 
-  const coach = await prisma.coach.findUnique({ where: { email } });
-  if (!coach) {
-    return NextResponse.json(
-      { error: "No coach account found for that email." },
-      { status: 404 },
-    );
-  }
-  await setSession({ role: "coach", id: coach.id });
-  return NextResponse.json({ id: coach.id, role: "coach" });
+  await setSession({ role, id: account.id });
+  return NextResponse.json({ id: account.id, role });
 }

@@ -12,6 +12,7 @@ export function LoginForm({ defaultRole = "student" }: { defaultRole?: Role }) {
   const router = useRouter();
   const [role, setRole] = useState<Role>(defaultRole);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +24,7 @@ export function LoginForm({ defaultRole = "student" }: { defaultRole?: Role }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, password, role }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -75,10 +76,27 @@ export function LoginForm({ defaultRole = "student" }: { defaultRole?: Role }) {
         <input
           id="login-email"
           type="email"
+          autoComplete="email"
           className={`${inputClass} mt-1.5`}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
+          required
+        />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="login-password">
+          Password
+        </label>
+        <input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          className={`${inputClass} mt-1.5`}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Your password"
           required
         />
       </div>

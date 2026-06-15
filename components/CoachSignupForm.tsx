@@ -17,6 +17,10 @@ import {
 import { COMMON_TIMEZONES } from "@/lib/timezone";
 import { btnPrimary, inputClass, labelClass } from "@/lib/ui";
 
+// Keep in sync with MIN_PASSWORD_LENGTH in lib/password.ts (server-enforced;
+// this is just for friendlier client-side feedback).
+const MIN_PASSWORD_LENGTH = 8;
+
 export type CoachFormValues = {
   name: string;
   email: string;
@@ -55,6 +59,8 @@ export function CoachSignupForm({
   const iv = initialValues ?? {};
   const [name, setName] = useState(iv.name ?? "");
   const [email, setEmail] = useState(iv.email ?? "");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [firm, setFirm] = useState<string>(iv.firm ?? "");
   const [title, setTitle] = useState(iv.title ?? "");
   const [yearsAtFirm, setYearsAtFirm] = useState(iv.yearsAtFirm ?? "");
@@ -93,6 +99,17 @@ export function CoachSignupForm({
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    // New accounts choose a password; editing never touches it.
+    if (!editing) {
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+        return;
+      }
+      if (password !== confirm) {
+        setError("Passwords don't match.");
+        return;
+      }
+    }
     if (hourlyRate === "") {
       setError("Choose your hourly rate — pick “Pro bono (free)” if you coach for free.");
       return;
@@ -109,6 +126,7 @@ export function CoachSignupForm({
         body: JSON.stringify({
           name,
           email,
+          password,
           firm,
           title,
           yearsAtFirm: Number(yearsAtFirm) || 0,
@@ -191,6 +209,42 @@ export function CoachSignupForm({
           )}
         </div>
       </div>
+
+      {!editing && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass} htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              className={`${inputClass} mt-1.5`}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              required
+              minLength={MIN_PASSWORD_LENGTH}
+            />
+          </div>
+          <div>
+            <label className={labelClass} htmlFor="confirm">
+              Confirm password
+            </label>
+            <input
+              id="confirm"
+              type="password"
+              autoComplete="new-password"
+              className={`${inputClass} mt-1.5`}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Re-enter your password"
+              required
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div>

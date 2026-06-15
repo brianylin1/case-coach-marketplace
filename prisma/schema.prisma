@@ -17,6 +17,10 @@ model Student {
   id          Int       @id @default(autoincrement())
   name        String
   email       String    @unique
+  // Email+password auth (hashed via lib/password.ts). Nullable so the additive
+  // migration always deploys cleanly; the app sets a password at signup, so no
+  // account is ever created without one.
+  passwordHash String?
   targetFirms String    @default("[]")
   focusAreas  String    @default("[]")
   timeline    String?
@@ -29,6 +33,10 @@ model Coach {
   id           Int                 @id @default(autoincrement())
   name         String
   email        String              @unique
+  // Email+password auth (hashed via lib/password.ts). Nullable so the additive
+  // migration always deploys cleanly; the app sets a password at signup, so no
+  // account is ever created without one.
+  passwordHash String?
   firm         String
   title        String
   yearsAtFirm  Int                 @default(0)

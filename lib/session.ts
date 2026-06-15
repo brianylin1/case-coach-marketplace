@@ -1,6 +1,7 @@
-// Lightweight, low-friction sessions: a signed cookie holding role + id.
-// No passwords by design (see README). Server-only — never import from a
-// "use client" component.
+// Lightweight sessions: a signed cookie holding role + id. This is just the
+// session primitive — credential checks (email + password) live in lib/password.ts
+// and the /api/auth routes. Server-only — never import from a "use client"
+// component.
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";

@@ -25,7 +25,7 @@ export default async function LoginPage({
           Welcome back
         </h1>
         <p className="mt-2 text-slate-600">
-          Sign in with your email — no password needed.
+          Sign in with your email and password.
         </p>
       </div>
       <div className={`${cardClass} mt-8 p-6 sm:p-8`}>

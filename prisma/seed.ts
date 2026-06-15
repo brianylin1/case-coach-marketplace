@@ -2,6 +2,11 @@ import "dotenv/config";
 import { prisma } from "@/lib/prisma";
 import { serializeList } from "@/lib/format";
 import { bookingWindow, coachSessionStarts } from "@/lib/availability";
+import { hashPassword } from "@/lib/password";
+
+// Shared password for every seeded demo account (documented in the README).
+// Demo data only — production accounts set their own.
+const DEMO_PASSWORD = "casecoach123";
 
 const coaches = [
   {
@@ -215,12 +220,15 @@ async function main() {
   await prisma.coach.deleteMany();
   await prisma.student.deleteMany();
 
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
+
   let blockCount = 0;
   const createdCoaches = await Promise.all(
     coaches.map(async ({ blocks, focusAreas, ...rest }) => {
       const coach = await prisma.coach.create({
         data: {
           ...rest,
+          passwordHash,
           focusAreas: serializeList(focusAreas),
         },
       });
@@ -236,6 +244,7 @@ async function main() {
       prisma.student.create({
         data: {
           ...s,
+          passwordHash,
           targetFirms: serializeList(s.targetFirms),
           focusAreas: serializeList(s.focusAreas),
         },
@@ -282,6 +291,7 @@ async function main() {
   console.log(
     `Seeded ${createdCoaches.length} coaches, ${createdStudents.length} students, ${blockCount} availability blocks, ${bookingCount} booking.`,
   );
+  console.log(`Demo accounts sign in with password: ${DEMO_PASSWORD}`);
 }
 
 main()

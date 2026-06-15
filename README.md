@@ -7,8 +7,8 @@ instantly** from open time slots.
 
 The product leads with *availability*: students start from open slots (the thing
 they actually care about), and coach details are secondary — revealed when you
-open a slot. Low friction throughout: no passwords, browsing is free, and
-booking takes two clicks.
+open a slot. Low friction throughout: browsing is free, sign-up is email +
+password, and booking takes two clicks.
 
 ---
 
@@ -34,7 +34,7 @@ booking takes two clicks.
 | Styling | Tailwind CSS v4 |
 | Icons | lucide-react |
 | Database | Postgres via Prisma 7 (`pg` driver adapter) |
-| Auth | Lightweight signed-cookie sessions (passwordless) |
+| Auth | Email + password (scrypt) + signed-cookie sessions |
 
 ## Quick start
 
@@ -51,14 +51,14 @@ You need a `DATABASE_URL` (Postgres). The quickest path is a free
 
 ### Try the demo accounts
 
-Sign in at `/login` (no password — just the email):
+Sign in at `/login`. Every seeded account uses the password **`casecoach123`**:
 
-| Role | Email |
-| --- | --- |
-| Coach | `maya.chen@coach.test` (has a booked session + open slots) |
-| Coach | `david.okafor@coach.test` |
-| Student | `jordan@student.test` (has an upcoming booking) |
-| Student | `sam@student.test` |
+| Role | Email | Password |
+| --- | --- | --- |
+| Coach | `maya.chen@coach.test` (has a booked session + open slots) | `casecoach123` |
+| Coach | `david.okafor@coach.test` | `casecoach123` |
+| Student | `jordan@student.test` (has an upcoming booking) | `casecoach123` |
+| Student | `sam@student.test` | `casecoach123` |
 
 The seed creates 8 coaches, ~40 open slots across the next week, and one sample
 booking so the dashboards aren't empty.
@@ -73,6 +73,8 @@ booking so the dashboards aren't empty.
 | `npm run db:push` | Push schema changes **and regenerate** the client |
 | `npm run db:seed` | Re-seed demo data |
 | `npm run db:reset` | Wipe, re-push, regenerate, and re-seed |
+| `npm run db:wipe` | Delete **all** accounts + bookings — fresh-start cutover (needs `CONFIRM_WIPE=1`) |
+| `npm run db:set-password` | Operator set/reset a password (`EMAIL=… ROLE=… PASSWORD=…`) |
 
 ## Project structure
 
@@ -81,13 +83,13 @@ app/
   page.tsx              # Landing page
   sessions/             # "Find a session" — the slot-first marketplace
   coaches/[id]/         # Public coach profile + bookable slots
-  signup/student|coach  # Signup pages
-  login/                # Passwordless sign-in
+  signup/student|coach  # Signup pages (email + password)
+  login/                # Email + password sign-in (+ set-password for legacy accounts)
   dashboard/            # Role-aware dashboard (student bookings / coach availability)
   api/
     bookings/           # POST: book a slot (simulated payment)
     slots/              # POST add / DELETE remove a coach's slots
-    students, coaches/  # Signup
+    students, coaches/  # Signup (creates the account + password)
     auth/               # Login / logout
   generated/prisma/     # Prisma client (generated; gitignored)
 components/             # SessionBrowser, SlotCard, BookingModal, AvailabilityEditor, Modal, …
@@ -113,12 +115,22 @@ List-like fields (target firms, focus areas) are stored as JSON-string columns;
 `lib/format.ts` handles (de)serialization. Times are stored and formatted in
 **UTC** for determinism.
 
-## How auth works (and its limits)
+## How auth works
 
-Signup/login set a **signed (HMAC) cookie** holding `{ role, id }` — no passwords,
-to keep friction near zero. This is fine for a demo/MVP but **not**
-production-grade: anyone who knows an email can sign in as that user. Add real
-verification (magic links / OAuth) in front of `lib/session.ts` before launch.
+Auth is **email + password**. Passwords are hashed with **scrypt** (`node:crypto`,
+no extra dependency) and stored in `Student.passwordHash` / `Coach.passwordHash`;
+hashing/verification live in `lib/password.ts`. A password is set at signup, so
+**no account exists without one**. On success, signup/login set a **signed (HMAC)
+cookie** holding `{ role, id }` (`lib/session.ts`); `getCurrentUser()` resolves it
+to a DB row.
+
+The original demo used email-only sign-in. The switch to passwords was a clean
+**fresh start** (the pre-password accounts were test data): run `npm run db:wipe`
+once to clear all accounts, after which everyone signs up again with a password.
+
+> **No self-serve "forgot password"** (that would need email-based recovery, which
+> is out of scope). The operator sets/resets a password with
+> `EMAIL=… ROLE=… PASSWORD=… npm run db:set-password` and shares it out-of-band.
 
 ## Adding Stripe (later)
 
