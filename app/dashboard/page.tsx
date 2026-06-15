@@ -21,6 +21,7 @@ import { stripeConfigured } from "@/lib/stripe";
 import { syncConnectAccount } from "@/lib/connect";
 import { BookingReadiness, type PolishItem } from "@/components/BookingReadiness";
 import { ShareYourPage } from "@/components/ShareYourPage";
+import { ManagePayoutsButton } from "@/components/ManagePayoutsButton";
 
 export const metadata: Metadata = {
   title: "Your dashboard · Down to Case",
@@ -320,7 +321,8 @@ async function CoachDashboard({
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
             {PAYMENTS_ENABLED && coach.hourlyRate > 0 && (
               <Field label="Payouts">
-                {payoutsEnabled ? "Active" : "Not connected"}
+                <div>{payoutsEnabled ? "Active" : "Not connected"}</div>
+                {coach.stripeAccountId && <ManagePayoutsButton />}
               </Field>
             )}
             <Field label="Reusable coaching room">
