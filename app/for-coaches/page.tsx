@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
 
@@ -33,6 +34,78 @@ const benefits = [
   },
 ];
 
+// The transformation, shown not told. Two phone-style threads, both from the
+// coach's point of view: incoming (student) bubbles left + gray, outgoing
+// (coach) bubbles right + indigo. The "old way" is deliberately long and
+// believable; the "easy way" is four messages. Plain data so the markup stays
+// a simple map.
+type ChatMsg = { from: "student" | "coach"; text?: string; link?: boolean };
+
+const oldWay: ChatMsg[] = [
+  { from: "student", text: "Hey! Any chance you could do a mock case with me sometime?" },
+  { from: "coach", text: "Yeah, happy to. What days are you free?" },
+  { from: "student", text: "Pretty open this week after 5!" },
+  { from: "coach", text: "I’m slammed Tue/Wed… Thursday?" },
+  { from: "student", text: "Thursday I have class till 6:30 😩" },
+  { from: "coach", text: "Friday morning then?" },
+  { from: "student", text: "Friday works. 10am?" },
+  { from: "coach", text: "Perfect. I’ll dig up a Zoom link" },
+  { from: "student", text: "Amazing, thank you!! And what do I owe you?" },
+  { from: "coach", text: "Don’t worry about it… $40 if you want, Venmo’s fine" },
+  { from: "student", text: "Sent! Wait — what’s your handle again?" },
+];
+
+const easyWay: ChatMsg[] = [
+  { from: "student", text: "Can you help me case?" },
+  { from: "coach", text: "Sure. I’m down to case." },
+  { from: "coach", link: true },
+  { from: "student", text: "Booked." },
+];
+
+function Bubble({
+  from,
+  children,
+}: {
+  from: "student" | "coach";
+  children: ReactNode;
+}) {
+  const isCoach = from === "coach";
+  return (
+    <div className={`flex ${isCoach ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-snug ${
+          isCoach
+            ? "rounded-br-sm bg-indigo-600 text-white"
+            : "rounded-bl-sm bg-slate-200 text-slate-800"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Thread({ messages }: { messages: ChatMsg[] }) {
+  return (
+    <div className="space-y-2">
+      {messages.map((m, i) => (
+        <Bubble key={i} from={m.from}>
+          {m.link ? (
+            <>
+              Book a time here:
+              <span className="mt-1.5 block rounded-lg bg-white/15 px-2.5 py-1.5 font-medium underline decoration-white/40 underline-offset-2">
+                downtocase.com/with/you
+              </span>
+            </>
+          ) : (
+            m.text
+          )}
+        </Bubble>
+      ))}
+    </div>
+  );
+}
+
 export default function ForCoachesPage() {
   return (
     <>
@@ -64,39 +137,38 @@ export default function ForCoachesPage() {
         </div>
       </section>
 
-      {/* The pain */}
+      {/* The transformation, shown not told */}
       <section className="border-y border-slate-200 bg-white">
-        <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
+        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
           <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            You want to say yes. Then you remember what it takes.
+            Same favor. A lot less hassle.
           </h2>
-          <p className="mt-6 text-slate-700">
-            Someone asks for help. You&apos;re happy to. But first:
+          <p className="mx-auto mt-4 max-w-xl text-center text-slate-600">
+            The coaching is exactly the same. Everything around it isn&apos;t.
           </p>
-          <ul className="mt-4 space-y-2.5 text-slate-600">
-            <li>Texts back and forth to find a time.</li>
-            <li>Sorting out how they&apos;ll pay.</li>
-            <li>The meeting link. The calendar invite.</li>
-            <li>And the quiet hope they actually show up.</li>
-          </ul>
-          <p className="mt-6 font-medium text-slate-900">
-            None of it is the coaching. So you say yes less than you&apos;d like.
-          </p>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+            {/* The old way */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+              <p className="mb-5 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                The old way
+              </p>
+              <Thread messages={oldWay} />
+              <p className="mt-5 text-center text-sm font-medium text-slate-500">
+                …and you haven&apos;t even booked a room yet.
+              </p>
+            </div>
+            {/* The easy way */}
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 sm:p-6">
+              <p className="mb-5 text-center text-xs font-semibold uppercase tracking-wider text-indigo-600">
+                The easy way
+              </p>
+              <Thread messages={easyWay} />
+              <p className="mt-5 text-center text-sm font-semibold text-slate-900">
+                Done.
+              </p>
+            </div>
+          </div>
         </div>
-      </section>
-
-      {/* The turn */}
-      <section className="mx-auto max-w-2xl px-4 py-14 text-center sm:px-6">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-          Send one link instead.
-        </h2>
-        <p className="mx-auto mt-5 max-w-xl text-lg text-slate-700">
-          They see the times you&apos;re free. They pick one. They get the
-          invite.
-        </p>
-        <p className="mx-auto mt-3 max-w-xl text-slate-600">
-          No texting. No coordinating. Often handled before you even reply.
-        </p>
       </section>
 
       {/* Why it beats doing it yourself */}
