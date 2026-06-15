@@ -17,7 +17,7 @@ export function SiteFooter() {
             <Link href="/signup/student" className="hover:text-slate-900">
               For students
             </Link>
-            <Link href="/signup/coach" className="hover:text-slate-900">
+            <Link href="/for-coaches" className="hover:text-slate-900">
               For coaches
             </Link>
             <Link href="/login" className="hover:text-slate-900">
