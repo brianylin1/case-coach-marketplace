@@ -4,7 +4,11 @@
 // calendar client localizes to its own viewer. Server-only (uses Buffer).
 import { BRAND, focusLabel, meetingLocationLabel, meetingPlatformLabel, SUPPORT_EMAIL } from "@/lib/constants";
 
-const ORGANIZER_EMAIL = process.env.EMAIL_FROM_ADDRESS ?? "bookings@downtocase.com";
+// The ICS ORGANIZER receives attendee RSVPs (calendar METHOD:REPLY), so it must
+// be a real, monitored mailbox — not the send-only From address
+// (bookings@downtocase.com), which bounces RSVPs with "550 address does not
+// exist". SUPPORT_EMAIL (support@downtocase.com) forwards to the operator.
+const ORGANIZER_EMAIL = SUPPORT_EMAIL;
 
 // Coach-provided meeting details, snapshotted onto the booking.
 export type BookingMeeting = {
