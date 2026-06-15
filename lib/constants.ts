@@ -130,7 +130,7 @@ export function casesCoachedLabel(key: string | null | undefined): string | null
 // marketplace pricing than a free-form number; 0 = pro bono. An existing
 // off-list rate is preserved on edit (the form prepends it).
 export const COACH_RATES: readonly number[] = [
-  0, 40, 50, 60, 75, 100, 125, 150, 175, 200, 250,
+  0, 5, 40, 50, 60, 75, 100, 125, 150, 175, 200, 250,
 ];
 
 export function rateOptionLabel(rate: number): string {
