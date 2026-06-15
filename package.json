@@ -11,7 +11,9 @@
     "db:push": "prisma db push && prisma generate",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "prisma db push && prisma generate && tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && prisma generate && tsx prisma/seed.ts"
+    "db:reset": "prisma db push --force-reset && prisma generate && tsx prisma/seed.ts",
+    "db:wipe": "tsx prisma/wipe.ts",
+    "db:set-password": "tsx prisma/set-password.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

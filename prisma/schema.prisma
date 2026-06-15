@@ -17,8 +17,9 @@ model Student {
   id          Int       @id @default(autoincrement())
   name        String
   email       String    @unique
-  // Email+password auth. Nullable: existing rows are "unclaimed" until the user
-  // sets a password on next sign-in (see lib/password.ts + /api/auth).
+  // Email+password auth (hashed via lib/password.ts). Nullable so the additive
+  // migration always deploys cleanly; the app sets a password at signup, so no
+  // account is ever created without one.
   passwordHash String?
   targetFirms String    @default("[]")
   focusAreas  String    @default("[]")
@@ -32,8 +33,9 @@ model Coach {
   id           Int                 @id @default(autoincrement())
   name         String
   email        String              @unique
-  // Email+password auth. Nullable: existing rows are "unclaimed" until the user
-  // sets a password on next sign-in (see lib/password.ts + /api/auth).
+  // Email+password auth (hashed via lib/password.ts). Nullable so the additive
+  // migration always deploys cleanly; the app sets a password at signup, so no
+  // account is ever created without one.
   passwordHash String?
   firm         String
   title        String

@@ -77,12 +77,13 @@ set availability once; students book a time in a couple of clicks).
   `npx prisma db push --accept-data-loss && next build` (syncs schema on deploy).
 - **Auth:** **email + password**. Passwords are hashed with **scrypt**
   (`node:crypto`, no extra dep) in `lib/password.ts` and stored in
-  `Student.passwordHash` / `Coach.passwordHash` (nullable). On success, a signed
+  `Student.passwordHash` / `Coach.passwordHash` (nullable column, but the app
+  always sets one at signup — no account exists without a password). On success a
   signed-cookie session (HMAC over `{role,id}`) is set in `lib/session.ts`;
-  `getCurrentUser()` is the server-only helper. **Legacy migration:** accounts
-  predating passwords have a null hash ("unclaimed") and set a password on next
-  sign-in via `/api/auth/set-password` (no reset emails / OTP / magic links). No
-  self-serve "forgot password" yet (operator clears `passwordHash` to reset).
+  `getCurrentUser()` is the server-only helper. **Cutover was a fresh start** (the
+  pre-password accounts were test data): `npm run db:wipe` clears all accounts, then
+  everyone re-signs-up with a password — no legacy "claim" path to maintain. No
+  self-serve reset (operator runs `npm run db:set-password`, shared out-of-band).
 - **Payments:** **LIVE in production** (`PAYMENTS_ENABLED=true`, live keys + live
   Connect Express). Students pay via Stripe **Checkout**; the charge settles to the
   platform and the coach's share (after a 15% fee, `PLATFORM_FEE_BPS=1500`) is
@@ -491,14 +492,14 @@ zone (browser-detected, `cc_tz` cookie — not a stored field).
   success-page **reconcile-on-return** (a paid-but-never-returned booking would need a
   manual reconcile). Refunds / cancellations / disputes are **manual** via the Stripe
   dashboard (no in-app tooling).
-- **Auth:** **email + password** (scrypt) + signed-cookie session. Existing
-  pre-password accounts are "unclaimed" (null hash) and set a password on next
-  sign-in (claim flow), so the email-only sign-in hole is closed once each user
-  claims. **Remaining gaps:** no self-serve password reset (email recovery is out
-  of scope — operator nulls `passwordHash` to reset); no email verification, rate
-  limiting, or account lockout yet; existing sessions stay valid across the cutover
-  (no forced re-auth). During the transition window an unclaimed account can still
-  be claimed by anyone who knows the email — notify real users to claim promptly.
+- **Auth:** **email + password** (scrypt) + signed-cookie session. The email-only
+  sign-in hole is closed: every account has a password, set at signup. The cutover
+  was a **fresh start** — `npm run db:wipe` clears the (test) accounts, no legacy
+  "claim" path. **Remaining gaps:** no self-serve password reset (email recovery is
+  out of scope — operator runs `npm run db:set-password`); no email verification,
+  rate limiting, or account lockout yet; login timing differs for unknown vs known
+  emails (minor enumeration vector). Sign-ups that race the wipe would need
+  re-creating, but at this scale that's a non-issue.
 - **Meeting rooms:** coach-provided and only *format*-validated (any `https://`
   URL + a known platform — not checked for reachability). The booking snapshot is
   **sticky**: editing the room later doesn't update past bookings or re-notify
@@ -567,8 +568,8 @@ payouts on Stripe" (PR #22)~~.
   photo-upload UI** to capture headshots yet.
 - Payments are **LIVE in production** (real charges + payouts enabled; first real
   booking done) — the binding constraint is now **coach acquisition / liquidity**,
-  not payments. Auth is now **email + password** (scrypt); legacy accounts claim a
-  password on next sign-in. Remaining auth gaps: no self-serve reset / email
+  not payments. Auth is now **email + password** (scrypt), via a clean fresh-start
+  cutover (`npm run db:wipe`). Remaining auth gaps: no self-serve reset / email
   verification / rate-limiting (see §7).
 
 **Recommended next priorities** (confirm with the operator before building):

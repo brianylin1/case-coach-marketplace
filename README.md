@@ -73,6 +73,8 @@ booking so the dashboards aren't empty.
 | `npm run db:push` | Push schema changes **and regenerate** the client |
 | `npm run db:seed` | Re-seed demo data |
 | `npm run db:reset` | Wipe, re-push, regenerate, and re-seed |
+| `npm run db:wipe` | Delete **all** accounts + bookings — fresh-start cutover (needs `CONFIRM_WIPE=1`) |
+| `npm run db:set-password` | Operator set/reset a password (`EMAIL=… ROLE=… PASSWORD=…`) |
 
 ## Project structure
 
@@ -88,7 +90,7 @@ app/
     bookings/           # POST: book a slot (simulated payment)
     slots/              # POST add / DELETE remove a coach's slots
     students, coaches/  # Signup (creates the account + password)
-    auth/               # Login / logout / set-password (claim a legacy account)
+    auth/               # Login / logout
   generated/prisma/     # Prisma client (generated; gitignored)
 components/             # SessionBrowser, SlotCard, BookingModal, AvailabilityEditor, Modal, …
 lib/
@@ -117,19 +119,18 @@ List-like fields (target firms, focus areas) are stored as JSON-string columns;
 
 Auth is **email + password**. Passwords are hashed with **scrypt** (`node:crypto`,
 no extra dependency) and stored in `Student.passwordHash` / `Coach.passwordHash`;
-verification and hashing live in `lib/password.ts`. On success, signup/login set a
-**signed (HMAC) cookie** holding `{ role, id }` (`lib/session.ts`); `getCurrentUser()`
-resolves it to a DB row.
+hashing/verification live in `lib/password.ts`. A password is set at signup, so
+**no account exists without one**. On success, signup/login set a **signed (HMAC)
+cookie** holding `{ role, id }` (`lib/session.ts`); `getCurrentUser()` resolves it
+to a DB row.
 
-**Transitioning legacy accounts:** the columns are nullable, so accounts created
-before passwords existed start "unclaimed" (`passwordHash = null`). The first time
-such a user signs in, the login form detects this and prompts them to **set a
-password** (`POST /api/auth/set-password`), which only works on an account that has
-no password yet. No reset emails, OTP, or magic links.
+The original demo used email-only sign-in. The switch to passwords was a clean
+**fresh start** (the pre-password accounts were test data): run `npm run db:wipe`
+once to clear all accounts, after which everyone signs up again with a password.
 
-> **Out of scope (by design):** self-serve "forgot password" (would need email-based
-> recovery). To reset a user, clear their `passwordHash` and they'll set a new one on
-> next sign-in.
+> **No self-serve "forgot password"** (that would need email-based recovery, which
+> is out of scope). The operator sets/resets a password with
+> `EMAIL=… ROLE=… PASSWORD=… npm run db:set-password` and shares it out-of-band.
 
 ## Adding Stripe (later)
 

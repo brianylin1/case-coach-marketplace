@@ -4,12 +4,9 @@ import { setSession } from "@/lib/session";
 import { isEmail, str } from "@/lib/validation";
 import { verifyPassword } from "@/lib/password";
 
-// Email + password sign-in.
-//
-// Accounts created before passwords existed have a null passwordHash
-// ("unclaimed"). For those we don't fail the login — we return
-// { needsPassword: true } so the client can prompt the user to set one via
-// /api/auth/set-password. Once claimed, the password is required.
+// Email + password sign-in. Every account sets a password at signup, so a
+// missing account and a wrong password collapse to the same "invalid
+// credentials" response (and we don't reveal which emails exist).
 export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try {
@@ -35,19 +32,7 @@ export async function POST(request: Request) {
       ? await prisma.student.findUnique({ where: { email } })
       : await prisma.coach.findUnique({ where: { email } });
 
-  if (!account) {
-    return NextResponse.json(
-      { error: `No ${role} account found for that email.` },
-      { status: 404 },
-    );
-  }
-
-  // Legacy/unclaimed account: hand off to the set-a-password flow.
-  if (!account.passwordHash) {
-    return NextResponse.json({ needsPassword: true });
-  }
-
-  if (!password || !(await verifyPassword(password, account.passwordHash))) {
+  if (!account || !(await verifyPassword(password, account.passwordHash))) {
     return NextResponse.json({ error: "Incorrect email or password." }, { status: 401 });
   }
 

@@ -50,7 +50,7 @@ export async function verifyPassword(
   password: string,
   stored: string | null | undefined,
 ): Promise<boolean> {
-  if (!stored) return false; // unclaimed account — no password to match
+  if (!stored) return false; // no password set — fail closed
   const parts = stored.split("$");
   if (parts.length !== 4 || parts[0] !== "scrypt") return false;
   const n = Number(parts[1]);
