@@ -4,31 +4,32 @@ import { ArrowRight, Check } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Send one link instead of ten texts · Down to Case",
+  title: "The easiest way to say yes to case help · Down to Case",
   description:
-    "People already ask you for case help. Send one link — they pick a time, pay, and get the invite. You just show up. Free to set up.",
+    "People already ask you for case help. The coaching is the easy part — the texting is the part you hate. Share one link and it's handled.",
 };
 
-// Outcome-first copy for consultants who already get asked for case help. The
-// pitch is "stop coordinating it by hand," not "join a marketplace" — we never
-// promise to bring them students. CTAs route into the existing /signup/coach
-// flow, which ends at the dashboard's share-your-page link.
+// Positioning: "the easiest way to say yes," not "get paid" and not "join a
+// marketplace." The emotional unlock is helping more people without the
+// coordination — payment is just one of the things the link quietly handles.
+// CTAs route into the existing /signup/coach flow, which ends at the
+// dashboard's share-your-page link.
 const benefits = [
   {
-    title: "Save your time.",
-    body: "Set it up once. Send the same link to everyone who asks.",
+    title: "Say yes once.",
+    body: "Set it up one time, then send the same link to everyone who asks.",
   },
   {
-    title: "Skip the back-and-forth.",
-    body: "They pick from times you already said yes to.",
+    title: "No back-and-forth.",
+    body: "They pick from times you’re already free. Nothing to coordinate.",
   },
   {
-    title: "Getting paid is easy.",
-    body: "They pay when they book. No Venmo. No awkward “so… about payment.”",
+    title: "Help more people.",
+    body: "When saying yes is this easy, you say it more often.",
   },
   {
-    title: "It feels like a real service, not a favor.",
-    body: "One link, a set price, a real booking — without making more work for yourself.",
+    title: "Just show up.",
+    body: "The time, the invite, even the payment — all handled before you reply.",
   },
 ];
 
@@ -41,12 +42,14 @@ export default function ForCoachesPage() {
           <div className="absolute left-1/2 top-[-12%] h-[420px] w-[820px] max-w-[120vw] -translate-x-1/2 rounded-full bg-gradient-to-br from-indigo-200/60 via-violet-200/40 to-transparent blur-3xl" />
         </div>
         <div className="mx-auto max-w-3xl px-4 pb-12 pt-16 text-center sm:px-6 sm:pt-24">
-          <h1 className="text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            People already ask you for case help. Send one link instead of ten
-            texts.
+          <p className="text-base font-medium text-indigo-600">
+            People already ask you for case help.
+          </p>
+          <h1 className="text-balance mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+            The coaching is the easy part. The texting is the part you hate.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-slate-600">
-            They pick a time, pay, and get the invite. You just show up.
+            This is the easiest way to say yes.
           </p>
           <div className="mt-8 flex flex-col items-center gap-2">
             <Link href="/signup/coach" className={`${btnPrimary} px-5 py-3 text-base`}>
@@ -65,20 +68,19 @@ export default function ForCoachesPage() {
       <section className="border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
           <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            The coaching takes an hour. The coordination never ends.
+            You want to say yes. Then you remember what it takes.
           </h2>
           <p className="mt-6 text-slate-700">
-            Someone asks. You want to say yes. But you know what&apos;s coming:
+            Someone asks for help. You&apos;re happy to. But first:
           </p>
           <ul className="mt-4 space-y-2.5 text-slate-600">
             <li>Texts back and forth to find a time.</li>
-            <li>The Venmo. The waiting. The little reminder nudge.</li>
+            <li>Sorting out how they&apos;ll pay.</li>
             <li>The meeting link. The calendar invite.</li>
             <li>And the quiet hope they actually show up.</li>
           </ul>
           <p className="mt-6 font-medium text-slate-900">
-            You just wanted to help. Now it&apos;s another chain of texts in your
-            phone.
+            None of it is the coaching. So you say yes less than you&apos;d like.
           </p>
         </div>
       </section>
@@ -89,11 +91,11 @@ export default function ForCoachesPage() {
           Send one link instead.
         </h2>
         <p className="mx-auto mt-5 max-w-xl text-lg text-slate-700">
-          They see the times you&apos;re free. They pick one. They pay. They get
-          the invite.
+          They see the times you&apos;re free. They pick one. They get the
+          invite.
         </p>
         <p className="mx-auto mt-3 max-w-xl text-slate-600">
-          No texts. No Venmo. No chasing. Often done before you even reply.
+          No texting. No coordinating. Often handled before you even reply.
         </p>
       </section>
 
