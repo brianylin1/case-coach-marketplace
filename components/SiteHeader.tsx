@@ -26,6 +26,9 @@ export async function SiteHeader() {
           <Link href="/sessions" className={btnGhost}>
             Find a session
           </Link>
+          <Link href="/for-coaches" className={btnGhost}>
+            Become a coach
+          </Link>
           {user ? (
             <>
               <Link href="/dashboard" className={btnGhost}>

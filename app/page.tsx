@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ArrowRight,
   CalendarCheck,
   MessageSquare,
   Search,
@@ -50,10 +51,10 @@ export default async function HomePage() {
               Book a mock case
             </Link>
             <Link
-              href="#how-it-works"
+              href="/for-coaches"
               className={`${btnSecondary} px-5 py-3 text-base`}
             >
-              See how it works
+              Become a coach
             </Link>
           </div>
           <p className="mt-8 text-sm font-medium text-slate-700">
@@ -197,7 +198,7 @@ export default async function HomePage() {
             Book a live mock case with a consultant from a top firm and find out
             where you really stand.
           </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-4">
+          <div className="mt-7 flex justify-center">
             <Link
               href="/sessions"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-base font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
@@ -205,13 +206,30 @@ export default async function HomePage() {
               <CalendarCheck className="size-5" />
               Book a mock case
             </Link>
-            <Link
-              href="/signup/coach"
-              className="text-sm font-medium text-indigo-100 underline-offset-4 hover:underline"
-            >
-              Are you a consultant? Coach with Down to Case.
-            </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Coach path — placed after all student content so it never competes
+          with the student journey. Routes to the /for-coaches persuasion page. */}
+      <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center sm:flex-row sm:justify-between sm:gap-6 sm:text-left">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Are you a consultant?
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              People already ask you for case help. This is the easiest way to
+              say yes.
+            </p>
+          </div>
+          <Link
+            href="/for-coaches"
+            className={`${btnSecondary} shrink-0 px-5 py-2.5`}
+          >
+            Become a coach
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
       </section>
     </>
