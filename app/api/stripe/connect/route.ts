@@ -4,6 +4,10 @@ import { getSession } from "@/lib/session";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { syncConnectAccount } from "@/lib/connect";
+import {
+  DEFAULT_PAYOUT_COUNTRY,
+  isPilotPayoutCountry,
+} from "@/lib/constants";
 
 // A logged-in coach starts (or resumes) Stripe Express onboarding. Creates the
 // connected account on first call, then returns a hosted Account Link URL for
@@ -27,8 +31,25 @@ export async function POST(request: Request) {
     const stripe = getStripe();
     let accountId = coach.stripeAccountId;
     if (!accountId) {
+      // Country is set once, at creation, and is immutable on the Express
+      // account. Null means US (platform country) — the prior default. Reject
+      // anything outside the pilot set: our payout path uses cross-border
+      // transfers via `source_transaction`, which Stripe only allows within
+      // US/CA/UK/EEA/CH. Onboarding elsewhere would create an account we could
+      // never pay out to.
+      const country = coach.country ?? DEFAULT_PAYOUT_COUNTRY;
+      if (!isPilotPayoutCountry(country)) {
+        return NextResponse.json(
+          {
+            error:
+              "Payouts aren't supported in your country yet. Please contact support.",
+          },
+          { status: 409 },
+        );
+      }
       const account = await stripe.accounts.create({
         type: "express",
+        country,
         email: coach.email,
         capabilities: { transfers: { requested: true } },
         business_profile: {

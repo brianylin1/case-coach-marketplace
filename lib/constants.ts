@@ -249,6 +249,36 @@ export const BRAND = "Down to Case";
 // Support contact surfaced in booking emails and calendar invites.
 export const SUPPORT_EMAIL = "support@downtocase.com";
 
+// ----- International payout pilot -------------------------------------------
+
+// Countries a coach may onboard from for payouts. Limited to the set Stripe can
+// reach with our model — separate charges + transfers using `source_transaction`
+// — which works cross-border only between the US, Canada, the UK, the EEA, and
+// Switzerland. Students still pay in USD; Stripe converts to the coach's local
+// currency at payout. Anything outside this set would need Stripe's separate
+// Cross-Border Payouts product (a much larger project), so we refuse it loudly.
+// ISO 3166-1 alpha-2, the format Stripe's Account `country` expects.
+export const PILOT_PAYOUT_COUNTRIES = [
+  "US", "CA", "GB", "CH", // US, Canada, UK, Switzerland
+  // EEA: EU 27 …
+  "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR",
+  "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK",
+  "SI", "ES", "SE",
+  // … plus the three non-EU EEA states.
+  "IS", "LI", "NO",
+] as const;
+
+export type PilotPayoutCountry = (typeof PILOT_PAYOUT_COUNTRIES)[number];
+
+// Default when a coach has no country on file: the platform's own country (US).
+// Matches prior behavior, where `accounts.create` omitted `country` and Stripe
+// defaulted every connected account to the platform country.
+export const DEFAULT_PAYOUT_COUNTRY = "US";
+
+export function isPilotPayoutCountry(value: string): value is PilotPayoutCountry {
+  return (PILOT_PAYOUT_COUNTRIES as readonly string[]).includes(value);
+}
+
 // ----- Booking & payout lifecycle (plain strings, validated in app code) -----
 
 // Booking.status. PENDING_PAYMENT holds a slot while a paid student checks out;
