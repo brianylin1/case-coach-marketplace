@@ -68,6 +68,11 @@ model Coach {
   // (pro bono coaches never need Stripe). Cached from the account.updated webhook.
   stripeAccountId      String?
   stripePayoutsEnabled Boolean             @default(false)
+  // Payout country (ISO 3166-1 alpha-2), set on the Stripe Express account at
+  // creation and immutable thereafter. Null = US (platform country), the prior
+  // default. Set operationally for international pilot coaches; validated against
+  // PILOT_PAYOUT_COUNTRIES (the set our transfer model can reach cross-border).
+  country              String?
   isActive     Boolean             @default(true)
   createdAt    DateTime            @default(now())
   blocks       AvailabilityBlock[]
