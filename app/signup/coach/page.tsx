@@ -7,7 +7,7 @@ import { parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "Coach with Down to Case · for consultants at top firms",
+  title: "Coach with Down to Case · for incoming consultants and recent offer holders",
 };
 
 export default async function CoachSignupPage({
@@ -49,12 +49,14 @@ export default async function CoachSignupPage({
       }
     : undefined;
 
-  const heading = editing ? "Update your coaching profile" : "Coach the next generation";
+  const heading = editing
+    ? "Update your coaching profile"
+    : "Help someone get the offer you just got";
   const subtitle = editing
     ? section === "meeting"
-      ? "Add your default coaching room below — the rest of your profile is already filled in."
+      ? "Add your default coaching room below. The rest of your profile is already filled in."
       : "Edit your details below. Changes save to your existing profile."
-    : "Set up your profile, then accept the requests that fit your schedule. Charge what you like — or coach pro bono.";
+    : "Set up your page once, share your link, and let candidates book the times you're free. Charge what you want, or coach for free.";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">

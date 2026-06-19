@@ -35,11 +35,11 @@ export default async function HomePage() {
             Live mock case interviews
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-            Get your reps in before interview day.
+            Practice cases with people who just got offers.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
-            Practice live with current and former consultants from top firms.
-            Walk into your interview knowing what good looks like.
+            Book mock cases with incoming consultants and recent offer holders
+            from top firms.
           </p>
           <p className="mx-auto mt-3 max-w-xl text-sm text-slate-500">
             Pick a time, book instantly, meet your coach. No request forms, no
@@ -58,7 +58,8 @@ export default async function HomePage() {
             </Link>
           </div>
           <p className="mt-8 text-sm font-medium text-slate-700">
-            Current and former consultants from top consulting firms.
+            People who recently went through recruiting at McKinsey, Bain, BCG,
+            and other top firms.
           </p>
         </div>
       </section>
@@ -72,7 +73,7 @@ export default async function HomePage() {
                 Who you&apos;ll practice with
               </h2>
               <p className="mt-1 text-slate-600">
-                Current and former consultants from top firms. Tap a coach to
+                Incoming consultants and recent offer holders. Tap a coach to
                 see their open times.
               </p>
             </div>
@@ -145,8 +146,8 @@ export default async function HomePage() {
         <div className="grid gap-6 sm:grid-cols-3">
           <Feature
             Icon={ShieldCheck}
-            title="Real consultants, real bar"
-            body="Current and former consultants from top firms who have been through these interviews and know the bar firsthand."
+            title="People who just did it"
+            body="Practice with incoming consultants and recent offer holders. They went through the same interviews not long ago, so they remember what actually worked."
           />
           <Feature
             Icon={Zap}
@@ -161,6 +162,25 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Why recent offer holders — the core argument, kept plain and honest */}
+      <section className="mx-auto max-w-3xl px-4 pb-14 sm:px-6">
+        <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900">
+          Why practice with recent offer holders?
+        </h2>
+        <div className="mx-auto mt-6 max-w-2xl space-y-4 text-slate-600">
+          <p>
+            They just did what you are trying to do. They remember the cases,
+            the pressure, and the mistakes that cost people. That makes their
+            feedback practical and fresh.
+          </p>
+          <p>
+            Practicing with friends is cheap, but you are both still learning. A
+            professional coach can cost $200 or more an hour. This is the middle
+            option: affordable reps with someone who recently passed the process.
+          </p>
+        </div>
+      </section>
+
       {/* FAQ */}
       <section className="scroll-mt-20 border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
@@ -170,7 +190,7 @@ export default async function HomePage() {
           <dl className="mt-8 divide-y divide-slate-200">
             <Faq
               q="Who are the coaches?"
-              a="Current and former consultants from top consulting firms. You can see each coach's firm, title, years, and what they're best for before you book."
+              a="Mostly incoming consultants and recent offer holders who just went through recruiting. Some are current or former consultants too. You can see each coach's background and what they're best for before you book."
             />
             <Faq
               q="Do I have to be targeting McKinsey, Bain, or BCG?"
@@ -195,8 +215,8 @@ export default async function HomePage() {
             Stop guessing what good looks like.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-indigo-100">
-            Book a live mock case with a consultant from a top firm and find out
-            where you really stand.
+            Book a live mock case with someone who recently passed the process
+            and find out where you really stand.
           </p>
           <div className="mt-7 flex justify-center">
             <Link
@@ -216,11 +236,11 @@ export default async function HomePage() {
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center sm:flex-row sm:justify-between sm:gap-6 sm:text-left">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Are you a consultant?
+              Did you just get an offer?
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              People already ask you for case help. This is the easiest way to
-              say yes.
+              Candidates want to know how you did it. This is an easy way to
+              help them and get paid for it.
             </p>
           </div>
           <Link

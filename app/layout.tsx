@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Down to Case · Live mock case interviews with consultants from top firms",
+  title: "Down to Case · Practice cases with people who just got offers",
   description:
-    "Down to Case connects consulting candidates with current and former consultants from top firms for live mock case interviews and coaching. Pick a time, book instantly, and walk in knowing what good looks like.",
+    "Down to Case connects consulting candidates with incoming consultants and recent offer holders from top firms for affordable live mock cases. Pick a time, book instantly, and get fresher feedback with more reps.",
 };
 
 export default function RootLayout({

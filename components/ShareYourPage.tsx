@@ -44,15 +44,17 @@ export function ShareYourPage({
     }
   }
 
-  // "former McKinsey Engagement Manager" — drop the status word when it's unset,
-  // the same graceful fallback the public profile's credibility line uses.
+  // "incoming McKinsey Associate" — drop the status word when it's unset, the
+  // same graceful fallback the public profile's credibility line uses.
   const role = `${firmStatus ? `${firmStatus} ` : ""}${firm} ${title}`;
+  // "a" vs "an" so an "incoming …" role reads right in the post below.
+  const article = /^[aeiou]/i.test(role) ? "an" : "a";
 
-  const dmText = `Happy to help! I run mock case interviews here — pick any open time and it books instantly: ${bookingUrl}`;
+  const dmText = `Happy to help! I run mock cases here. Pick any open time and it books instantly: ${bookingUrl}`;
 
-  const linkedinText = `Helping people prep for consulting interviews has become one of my favorite parts of the week, so I'm making it easier to grab time with me.
+  const linkedinText = `I help people prep for consulting interviews, and I'm making it easier to grab time with me.
 
-I'm a ${role} and I run live 1:1 mock case interviews — you'll work a real case, then get direct, specific feedback on where you stand before the real thing.
+I'm ${article} ${role} and I run live 1:1 mock cases. You'll work a real case, then get direct, specific feedback on where you stand before the real thing.
 
 Pick any open time and you're booked instantly 👉 ${bookingUrl}
 

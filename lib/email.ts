@@ -156,7 +156,7 @@ export function renderBookingEmails(input: BookingEmailInput): RenderedBookingEm
           `If anything changes, contact the student directly or reach us at <a href="mailto:${SUPPORT_EMAIL}" style="color:#4f46e5;text-decoration:none">${SUPPORT_EMAIL}</a>.`,
         ),
     },
-    tagline: "Case coaching with consultants who've sat in the chair.",
+    tagline: "Case practice with people who recently went through recruiting.",
   });
 
   // Student: polished, trustworthy confirmation with full join details.
@@ -176,7 +176,7 @@ export function renderBookingEmails(input: BookingEmailInput): RenderedBookingEm
         "Whether you're working on structuring, market sizing, profitability, PEI, final-round prep, or just building confidence under pressure, show up with one thing you want to improve and your coach will take it from there.",
       ),
     },
-    tagline: "Book coaching when you're ready to practice.",
+    tagline: "Practice with people who recently got offers.",
   });
 
   return {

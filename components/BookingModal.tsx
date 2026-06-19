@@ -14,7 +14,7 @@ import { Modal } from "./Modal";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { MeetingActions, type BookingMeetingView } from "./MeetingActions";
-import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
+import { bestForPhrase, casesCoachedLabel, firmStatusWord } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -50,12 +50,8 @@ export function BookingModal({
   const coach = slot?.coach;
   const coachBestFor = coach ? bestForPhrase(coach.bestFor, coach.focusKeys) : null;
   const coachCases = coach ? casesCoachedLabel(coach.casesCoached) : null;
-  const coachStatus =
-    coach?.firmStatus === "current"
-      ? "Current "
-      : coach?.firmStatus === "former"
-        ? "Former "
-        : "";
+  const coachStatusWord = coach ? firmStatusWord(coach.firmStatus) : null;
+  const coachStatus = coachStatusWord ? `${coachStatusWord} ` : "";
 
   // Whether this booking will collect real money now (vs. instant/free path).
   const willCharge = paymentsEnabled && (slot?.coach.hourlyRate ?? 0) > 0;
@@ -127,8 +123,10 @@ export function BookingModal({
                 </div>
                 <p className="text-sm text-slate-500">
                   {coachStatus}
-                  {slot.coach.title} · {slot.coach.yearsAtFirm} yr
-                  {slot.coach.yearsAtFirm === 1 ? "" : "s"}
+                  {slot.coach.title}
+                  {slot.coach.yearsAtFirm > 0
+                    ? ` · ${slot.coach.yearsAtFirm} yr${slot.coach.yearsAtFirm === 1 ? "" : "s"}`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -262,7 +260,7 @@ export function BookingModal({
             <MeetingActions
               variant="student"
               bookingId={result.id}
-              title={`CaseCoach: case session with ${result.coach.name}`}
+              title={`Down to Case: mock case with ${result.coach.name}`}
               start={new Date(slot.startISO)}
               durationMins={slot.durationMins}
               meeting={result.meeting}

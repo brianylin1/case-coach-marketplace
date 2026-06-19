@@ -24,7 +24,7 @@ import type { CalendarCell, DaySection, SlotView } from "@/lib/types";
 export const metadata: Metadata = {
   title: "Book a mock case · Down to Case",
   description:
-    "Book a live mock case with current and former consultants from top firms. Pick a time and book instantly.",
+    "Book a live mock case with incoming consultants and recent offer holders from top firms. Pick a time and book instantly.",
 };
 
 type SearchParams = Promise<{
@@ -187,8 +187,8 @@ export default async function SessionsPage({
           Book a mock case
         </h1>
         <p className="mt-1 text-slate-600">
-          Scan a time, then pick your coach. Current and former consultants from
-          top firms.
+          Scan a time, then pick your coach. Incoming consultants and recent
+          offer holders who just went through recruiting.
         </p>
       </header>
 

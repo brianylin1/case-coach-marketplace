@@ -48,8 +48,8 @@ model Coach {
   linkedinUrl  String?
   // Trust/positioning — all optional, with student-facing fallbacks when unset
   // (see lib/constants.ts for the curated keys). bestFor: single BEST_FOR key;
-  // casesCoached: CASES_COACHED range bucket; firmStatus: "current" | "former"
-  // at `firm` (null = unstated; we never guess). photoUrl: external image URL
+  // casesCoached: CASES_COACHED range bucket; firmStatus: "incoming" | "current"
+  // | "former" at `firm` (null = unstated; we never guess). photoUrl: external image URL
   // shown in place of the initials avatar (display-only; no upload/storage).
   bestFor       String?
   casesCoached  String?
