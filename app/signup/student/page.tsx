@@ -30,7 +30,7 @@ export default async function StudentSignupPage() {
   const heading = editing ? "Update your preferences" : "Find your case coach";
   const subtitle = editing
     ? "We'll use this information to help surface relevant coaches."
-    : "Create a free account — about a minute — then browse coaches right away.";
+    : "Create a free account in about a minute, then browse coaches right away.";
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12 sm:px-6">
@@ -44,7 +44,7 @@ export default async function StudentSignupPage() {
       {!editing && (
         <div className="mt-6 space-y-1 text-center text-sm text-slate-500">
           <p>
-            Are you a consultant at a top firm?{" "}
+            Did you recently get an offer?{" "}
             <Link
               href="/signup/coach"
               className="font-medium text-indigo-600 hover:underline"

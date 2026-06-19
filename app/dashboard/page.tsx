@@ -11,7 +11,7 @@ import { FocusTag } from "@/components/FocusTag";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AvailabilityGrid } from "@/components/AvailabilityGrid";
 import { MeetingActions } from "@/components/MeetingActions";
-import { focusLabel, meetingPlatformLabel } from "@/lib/constants";
+import { firmStatusWord, focusLabel, meetingPlatformLabel } from "@/lib/constants";
 import { blocksToCellKeys } from "@/lib/availability";
 import { formatRate, formatSlotParts, parseList } from "@/lib/format";
 import { getViewerTimeZone } from "@/lib/viewer-tz";
@@ -125,7 +125,7 @@ async function StudentDashboard({ studentId }: { studentId: number }) {
                       <MeetingActions
                         variant="student"
                         bookingId={b.id}
-                        title={`CaseCoach: case session with ${b.coach.name}`}
+                        title={`Down to Case: mock case with ${b.coach.name}`}
                         start={b.startTime}
                         durationMins={b.durationMins}
                         meeting={{
@@ -234,6 +234,7 @@ async function CoachDashboard({
 
   const hasAvailability = initialCellKeys.length > 0;
   const isBookable = hasAvailability && hasMeetingInfo && !needsPayouts;
+  const statusWord = firmStatusWord(coach.firmStatus);
 
   // Absolute, shareable URL for the coach's public page — resolved from the
   // request host so it works across prod and previews without extra config.
@@ -316,7 +317,11 @@ async function CoachDashboard({
           </div>
           <dl className="mt-4 space-y-3 text-sm">
             <Field label="Role">
-              {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
+              {statusWord ? `${statusWord} ` : ""}
+              {coach.title}
+              {coach.yearsAtFirm > 0
+                ? ` · ${coach.yearsAtFirm} yr${coach.yearsAtFirm === 1 ? "" : "s"}`
+                : ""}
             </Field>
             <Field label="Rate">{formatRate(coach.hourlyRate)}</Field>
             {PAYMENTS_ENABLED && coach.hourlyRate > 0 && (
@@ -402,7 +407,7 @@ async function CoachDashboard({
                   <div className="mt-4 border-t border-slate-100 pt-3">
                     <MeetingActions
                       bookingId={b.id}
-                      title={`CaseCoach: case session with ${b.student.name}`}
+                      title={`Down to Case: mock case with ${b.student.name}`}
                       start={b.startTime}
                       durationMins={b.durationMins}
                       meeting={{

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLink, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
-import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
+import { bestForPhrase, casesCoachedLabel, firmStatusWord } from "@/lib/constants";
 import { formatRate, parseList } from "@/lib/format";
 import { cardClass } from "@/lib/ui";
 
@@ -26,12 +26,7 @@ type CoachLike = {
 export function CoachCard({ coach }: { coach: CoachLike }) {
   const best = bestForPhrase(coach.bestFor, parseList(coach.focusAreas));
   const cases = casesCoachedLabel(coach.casesCoached);
-  const statusWord =
-    coach.firmStatus === "current"
-      ? "Current"
-      : coach.firmStatus === "former"
-        ? "Former"
-        : null;
+  const statusWord = firmStatusWord(coach.firmStatus);
   return (
     <div
       className={`${cardClass} group relative flex flex-col gap-3 p-5 transition hover:-translate-y-0.5 hover:shadow-md`}
@@ -45,7 +40,10 @@ export function CoachCard({ coach }: { coach: CoachLike }) {
           </div>
           <p className="text-sm text-slate-500">
             {statusWord ? `${statusWord} ` : ""}
-            {coach.title} · {coach.yearsAtFirm} yr{coach.yearsAtFirm === 1 ? "" : "s"}
+            {coach.title}
+            {coach.yearsAtFirm > 0
+              ? ` · ${coach.yearsAtFirm} yr${coach.yearsAtFirm === 1 ? "" : "s"}`
+              : ""}
           </p>
         </div>
       </div>

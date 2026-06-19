@@ -277,13 +277,14 @@ export function CoachSignupForm({
             className={`${inputClass} mt-1.5`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Engagement Manager"
+            placeholder="Associate"
             required
           />
         </div>
         <div>
           <label className={labelClass} htmlFor="years">
-            Years at firm
+            Years at firm{" "}
+            <span className="font-normal text-slate-400">(optional)</span>
           </label>
           <input
             id="years"
@@ -295,6 +296,9 @@ export function CoachSignupForm({
             onChange={(e) => setYearsAtFirm(e.target.value)}
             placeholder="4"
           />
+          <p className="mt-1 text-xs text-slate-400">
+            Leave blank if you&apos;re incoming.
+          </p>
         </div>
       </div>
 
@@ -308,7 +312,7 @@ export function CoachSignupForm({
           className={`${inputClass} mt-1.5`}
           value={headline}
           onChange={(e) => setHeadline(e.target.value)}
-          placeholder="I'll teach you the structuring instinct interviewers look for."
+          placeholder="I just went through recruiting and I know what helped."
         />
       </div>
 
@@ -322,7 +326,7 @@ export function CoachSignupForm({
           className={`${inputClass} mt-1.5`}
           value={bio}
           onChange={(e) => setBio(e.target.value)}
-          placeholder="Tell students about your background, coaching style, and who you're a great fit for."
+          placeholder="Tell students about your recruiting experience, how you coach, and who you're a great fit for."
           required
         />
       </div>
@@ -384,7 +388,7 @@ export function CoachSignupForm({
           </div>
           <div>
             <span className={labelClass}>
-              Are you currently at {firm || "your firm"}?
+              Are you incoming, current, or former at {firm || "your firm"}?
             </span>
             <div className="mt-2 flex flex-wrap gap-2">
               {FIRM_STATUSES.map((s) => {
@@ -407,7 +411,7 @@ export function CoachSignupForm({
               })}
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              Lets your profile say “Current …” or “Former …” before your firm
+              Lets your profile say Incoming, Current, or Former before your firm
               and title. Tap again to clear.
             </p>
           </div>
@@ -632,7 +636,7 @@ export function CoachSignupForm({
       </button>
       {!editing && (
         <p className="text-center text-xs text-slate-400">
-          No password needed — we&apos;ll recognize you by email next time.
+          You&apos;ll use your email and password to sign in next time.
         </p>
       )}
     </form>

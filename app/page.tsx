@@ -2,26 +2,14 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarCheck,
+  Check,
   MessageSquare,
   Search,
-  ShieldCheck,
-  Target,
   Zap,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { CoachCard } from "@/components/CoachCard";
-import { bookableCoachWhere } from "@/lib/bookable";
-import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
+import { btnPrimary, btnSecondary } from "@/lib/ui";
 
-export default async function HomePage() {
-  // Only coaches who've configured a meeting room are bookable, so the homepage
-  // never features a coach a visitor can't actually book (mirrors /sessions).
-  const featured = await prisma.coach.findMany({
-    where: bookableCoachWhere(),
-    take: 3,
-    orderBy: { createdAt: "asc" },
-  });
-
+export default function HomePage() {
   return (
     <>
       {/* Hero */}
@@ -35,11 +23,11 @@ export default async function HomePage() {
             Live mock case interviews
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl text-balance text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-            Get your reps in before interview day.
+            Practice cases with people who just got offers.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
-            Practice live with current and former consultants from top firms.
-            Walk into your interview knowing what good looks like.
+            Book mock cases with incoming consultants and recent offer holders
+            from top firms.
           </p>
           <p className="mx-auto mt-3 max-w-xl text-sm text-slate-500">
             Pick a time, book instantly, meet your coach. No request forms, no
@@ -58,44 +46,11 @@ export default async function HomePage() {
             </Link>
           </div>
           <p className="mt-8 text-sm font-medium text-slate-700">
-            Current and former consultants from top consulting firms.
+            People who recently went through recruiting at McKinsey, Bain, BCG,
+            and other top firms.
           </p>
         </div>
       </section>
-
-      {/* Featured coaches — only rendered when there are bookable coaches */}
-      {featured.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                Who you&apos;ll practice with
-              </h2>
-              <p className="mt-1 text-slate-600">
-                Current and former consultants from top firms. Tap a coach to
-                see their open times.
-              </p>
-            </div>
-            <Link
-              href="/sessions"
-              className="hidden text-sm font-medium text-indigo-600 hover:underline sm:inline"
-            >
-              See open times →
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((coach) => (
-              <CoachCard key={coach.id} coach={coach} />
-            ))}
-          </div>
-          <Link
-            href="/sessions"
-            className="mt-6 inline-block text-sm font-medium text-indigo-600 hover:underline sm:hidden"
-          >
-            See open times →
-          </Link>
-        </section>
-      )}
 
       {/* How it works */}
       <section
@@ -140,25 +95,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Value props */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-6 sm:grid-cols-3">
-          <Feature
-            Icon={ShieldCheck}
-            title="Real consultants, real bar"
-            body="Current and former consultants from top firms who have been through these interviews and know the bar firsthand."
+      {/* Why recent offer holders — bullet argument, right after how-it-works */}
+      <section className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
+        <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900">
+          Why practice with recent offer holders?
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-center text-slate-600">
+          They just went through the process you are preparing for.
+        </p>
+        <ul className="mx-auto mt-8 max-w-2xl space-y-4">
+          <WhyPoint
+            title="Fresher advice:"
+            body="they remember what cases felt like, what mistakes they made, and what helped them improve."
           />
-          <Feature
-            Icon={Zap}
-            title="Booked in two clicks"
-            body="Pick a time and you're confirmed. No request forms, no waiting. Your meeting details arrive instantly."
+          <WhyPoint
+            title="More practical feedback:"
+            body="they can tell you what worked in real interviews, not just theory."
           />
-          <Feature
-            Icon={Target}
-            title="The right rep, every time"
-            body="See each coach's firm, focus, and what they're best for up front, so every session targets exactly what you need to work on."
+          <WhyPoint
+            title="More affordable reps:"
+            body="you can practice more often without paying senior-coach prices."
           />
-        </div>
+          <WhyPoint
+            title="Better than peer-only practice:"
+            body="friends are helpful, but they are usually still learning too."
+          />
+        </ul>
       </section>
 
       {/* FAQ */}
@@ -170,7 +132,7 @@ export default async function HomePage() {
           <dl className="mt-8 divide-y divide-slate-200">
             <Faq
               q="Who are the coaches?"
-              a="Current and former consultants from top consulting firms. You can see each coach's firm, title, years, and what they're best for before you book."
+              a="Mostly incoming consultants and recent offer holders who just went through recruiting. Some are current or former consultants too. You can see each coach's background and what they're best for before you book."
             />
             <Faq
               q="Do I have to be targeting McKinsey, Bain, or BCG?"
@@ -195,8 +157,8 @@ export default async function HomePage() {
             Stop guessing what good looks like.
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-indigo-100">
-            Book a live mock case with a consultant from a top firm and find out
-            where you really stand.
+            Book a live mock case with someone who recently passed the process
+            and find out where you really stand.
           </p>
           <div className="mt-7 flex justify-center">
             <Link
@@ -216,11 +178,11 @@ export default async function HomePage() {
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center sm:flex-row sm:justify-between sm:gap-6 sm:text-left">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              Are you a consultant?
+              Did you just get an offer?
             </h2>
             <p className="mt-1 text-sm text-slate-600">
-              People already ask you for case help. This is the easiest way to
-              say yes.
+              Candidates want to know how you did it. This is an easy way to
+              help them and get paid for it.
             </p>
           </div>
           <Link
@@ -263,23 +225,16 @@ function Step({
   );
 }
 
-function Feature({
-  Icon,
-  title,
-  body,
-}: {
-  Icon: typeof Search;
-  title: string;
-  body: string;
-}) {
+function WhyPoint({ title, body }: { title: string; body: string }) {
   return (
-    <div className={`${cardClass} p-6`}>
-      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-        <Icon className="size-5" />
+    <li className="flex gap-3">
+      <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+        <Check className="size-4" />
       </span>
-      <h3 className="mt-4 font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{body}</p>
-    </div>
+      <p className="text-slate-700">
+        <span className="font-semibold text-slate-900">{title}</span> {body}
+      </p>
+    </li>
   );
 }
 

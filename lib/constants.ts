@@ -182,16 +182,34 @@ export function rateOptionLabel(rate: number): string {
   return rate <= 0 ? "Pro bono (free)" : `$${rate}/hr`;
 }
 
-// Whether the coach is currently at `firm` or an alum. Self-reported — same
-// trust basis as firm/title — and rendered as the coach's claim, never as
-// "verified". Unset means we show the neutral wording used before this field.
+// Where a coach is in their journey at `firm`: an incoming offer holder who
+// hasn't started yet, a current employee, or an alum. Self-reported (same trust
+// basis as firm/title) and rendered as the coach's claim, never as "verified".
+// "incoming" is the core Down to Case persona: people who recently got the
+// offer. Unset means we show the neutral wording used before this field.
 export const FIRM_STATUSES = [
+  { key: "incoming", label: "Incoming" },
   { key: "current", label: "Current" },
   { key: "former", label: "Former" },
 ] as const;
 
-export function isFirmStatus(value: string): value is "current" | "former" {
-  return value === "current" || value === "former";
+export function isFirmStatus(value: string): value is "incoming" | "current" | "former" {
+  return value === "incoming" || value === "current" || value === "former";
+}
+
+// The capitalized word shown before a coach's firm/title (e.g. "Incoming
+// McKinsey Associate"). Null when unset, so surfaces fall back to the neutral
+// wording used before this field existed.
+export function firmStatusWord(
+  status: string | null | undefined,
+): "Incoming" | "Current" | "Former" | null {
+  return status === "incoming"
+    ? "Incoming"
+    : status === "current"
+      ? "Current"
+      : status === "former"
+        ? "Former"
+        : null;
 }
 
 // Price filter buckets for the session browser. min/max are inclusive USD

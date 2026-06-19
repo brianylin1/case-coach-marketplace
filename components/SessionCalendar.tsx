@@ -9,7 +9,7 @@ import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { CoachProfilePanel } from "./CoachProfilePanel";
 import { BookingModal } from "./BookingModal";
-import { FIRMS, bestForPhrase, firmStyle } from "@/lib/constants";
+import { FIRMS, bestForPhrase, firmStatusWord, firmStyle } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { wallTimeToUtc } from "@/lib/timezone";
 import { btnPrimary, btnSecondary } from "@/lib/ui";
@@ -425,6 +425,8 @@ function CoachRow({
   const c = slot.coach;
   // One scannable differentiator per row; full focus detail is behind "View".
   const best = bestForPhrase(c.bestFor, c.focusKeys);
+  const word = firmStatusWord(c.firmStatus);
+  const statusWord = word ? `${word} ` : "";
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-200 px-3 py-2">
       {/* info: full row on mobile, shares the row on desktop */}
@@ -439,8 +441,10 @@ function CoachRow({
             </span>
           </div>
           <p className="truncate text-xs text-slate-500">
-            {c.firmStatus === "current" ? "Current " : c.firmStatus === "former" ? "Former " : ""}
-            {c.title} · {c.yearsAtFirm}y{best ? ` · Best for ${best}` : ""}
+            {statusWord}
+            {c.title}
+            {c.yearsAtFirm > 0 ? ` · ${c.yearsAtFirm}y` : ""}
+            {best ? ` · Best for ${best}` : ""}
           </p>
         </div>
         <span className="shrink-0 text-sm font-semibold text-slate-900">

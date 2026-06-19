@@ -1,7 +1,7 @@
 import { Clock, ExternalLink, Users, Zap } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
-import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
+import { bestForPhrase, casesCoachedLabel, firmStatusWord } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import { btnPrimary, cardClass } from "@/lib/ui";
 import type { SlotView } from "@/lib/types";
@@ -20,8 +20,8 @@ export function SlotCard({
   const c = slot.coach;
   const best = bestForPhrase(c.bestFor, c.focusKeys);
   const cases = casesCoachedLabel(c.casesCoached);
-  const statusWord =
-    c.firmStatus === "current" ? "Current " : c.firmStatus === "former" ? "Former " : "";
+  const word = firmStatusWord(c.firmStatus);
+  const statusWord = word ? `${word} ` : "";
   return (
     <div
       role="button"
@@ -55,7 +55,10 @@ export function SlotCard({
           </div>
           <p className="truncate text-xs text-slate-500">
             {statusWord}
-            {c.title} · {c.yearsAtFirm} yr{c.yearsAtFirm === 1 ? "" : "s"}
+            {c.title}
+            {c.yearsAtFirm > 0
+              ? ` · ${c.yearsAtFirm} yr${c.yearsAtFirm === 1 ? "" : "s"}`
+              : ""}
           </p>
         </div>
       </div>

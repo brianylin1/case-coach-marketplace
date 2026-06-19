@@ -5,32 +5,32 @@ import { ArrowRight, Check } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
 
 export const metadata: Metadata = {
-  title: "The easiest way to say yes to case help · Down to Case",
+  title: "Become a coach · Down to Case",
   description:
-    "People already ask you for case help. The coaching is the easy part — the texting is the part you hate. Share one link and it's handled.",
+    "You just went through recruiting. Candidates want that insight. Set your times, share your link, and let them book you for affordable mock cases.",
 };
 
-// Positioning: "the easiest way to say yes," not "get paid" and not "join a
-// marketplace." The emotional unlock is helping more people without the
-// coordination — payment is just one of the things the link quietly handles.
-// CTAs route into the existing /signup/coach flow, which ends at the
-// dashboard's share-your-page link.
+// Positioning: speak to incoming consultants and recent offer holders. The hook
+// is "you just went through recruiting, and that fresh insight is what
+// candidates want." Helping them is easy, and the link quietly handles the
+// scheduling and payment. CTAs route into the existing /signup/coach flow,
+// which ends at the dashboard's share-your-page link.
 const benefits = [
   {
-    title: "Say yes once.",
-    body: "Set it up one time, then send the same link to everyone who asks.",
+    title: "Get paid for it.",
+    body: "Set your own rate. Charge what you want, or coach for free.",
+  },
+  {
+    title: "Your experience is what they want.",
+    body: "You just did this. That fresh memory is exactly what candidates need.",
   },
   {
     title: "No back-and-forth.",
-    body: "They pick from times you’re already free. Nothing to coordinate.",
-  },
-  {
-    title: "Help more people.",
-    body: "When saying yes is this easy, you say it more often.",
+    body: "They pick from times you're already free. Nothing to plan.",
   },
   {
     title: "Just show up.",
-    body: "The time, the invite, even the payment — all handled before you reply.",
+    body: "The time, the invite, even the payment are handled before you reply.",
   },
 ];
 
@@ -116,13 +116,13 @@ export default function ForCoachesPage() {
         </div>
         <div className="mx-auto max-w-3xl px-4 pb-12 pt-16 text-center sm:px-6 sm:pt-24">
           <p className="text-base font-medium text-indigo-600">
-            People already ask you for case help.
+            You just went through recruiting.
           </p>
           <h1 className="text-balance mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            The coaching is the easy part. The texting is the part you hate.
+            You got the offer. Candidates want to know how you did it.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-slate-600">
-            This is the easiest way to say yes.
+            Help them with what you just learned, and get paid for it.
           </p>
           <div className="mt-8 flex flex-col items-center gap-2">
             <Link href="/signup/coach" className={`${btnPrimary} px-5 py-3 text-base`}>
@@ -132,7 +132,7 @@ export default function ForCoachesPage() {
             <span className="text-sm text-slate-500">Free to set up.</span>
           </div>
           <p className="mt-8 text-sm font-medium text-slate-700">
-            For current and former consultants.
+            For incoming consultants and recent offer holders.
           </p>
         </div>
       </section>

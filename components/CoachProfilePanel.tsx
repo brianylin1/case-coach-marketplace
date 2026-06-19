@@ -2,7 +2,7 @@ import { CalendarClock, ExternalLink, Target, Users } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { FirmBadge } from "./FirmBadge";
 import { FocusTag } from "./FocusTag";
-import { bestForPhrase, casesCoachedLabel } from "@/lib/constants";
+import { bestForPhrase, casesCoachedLabel, firmStatusWord } from "@/lib/constants";
 import { formatRate } from "@/lib/format";
 import type { CoachView } from "@/lib/types";
 
@@ -10,19 +10,20 @@ import type { CoachView } from "@/lib/types";
 // standalone coach page. No hooks, so it renders fine in both server and client
 // trees. Every trust signal is optional — absent ones simply don't render.
 export function CoachProfilePanel({ coach }: { coach: CoachView }) {
-  const years = `${coach.yearsAtFirm} yr${coach.yearsAtFirm === 1 ? "" : "s"}`;
-  // Claim "Current/Former <Firm>" only when the coach stated it; otherwise keep
-  // the neutral wording used before firmStatus existed. Never inferred.
-  const statusWord =
-    coach.firmStatus === "current"
-      ? "Current"
-      : coach.firmStatus === "former"
-        ? "Former"
-        : null;
+  // Drop tenure for people who haven't started (incoming offer holders sit at 0
+  // years); show it only when it's a real, positive number.
+  const years =
+    coach.yearsAtFirm > 0
+      ? ` · ${coach.yearsAtFirm} yr${coach.yearsAtFirm === 1 ? "" : "s"}`
+      : "";
+  // Claim "Incoming/Current/Former <Firm>" only when the coach stated it;
+  // otherwise keep the neutral wording used before firmStatus existed. Never
+  // inferred.
+  const statusWord = firmStatusWord(coach.firmStatus);
   const credential =
     statusWord && coach.firm !== "Other"
-      ? `${statusWord} ${coach.firm} ${coach.title} · ${years}`
-      : `${coach.title} · ${years} at ${coach.firm}`;
+      ? `${statusWord} ${coach.firm} ${coach.title}${years}`
+      : `${coach.title}${years} at ${coach.firm}`;
   const bestFor = bestForPhrase(coach.bestFor, coach.focusKeys);
   const cases = casesCoachedLabel(coach.casesCoached);
 
