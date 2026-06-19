@@ -2,26 +2,14 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarCheck,
+  Check,
   MessageSquare,
   Search,
-  ShieldCheck,
-  Target,
   Zap,
 } from "lucide-react";
-import { prisma } from "@/lib/prisma";
-import { CoachCard } from "@/components/CoachCard";
-import { bookableCoachWhere } from "@/lib/bookable";
-import { btnPrimary, btnSecondary, cardClass } from "@/lib/ui";
+import { btnPrimary, btnSecondary } from "@/lib/ui";
 
-export default async function HomePage() {
-  // Only coaches who've configured a meeting room are bookable, so the homepage
-  // never features a coach a visitor can't actually book (mirrors /sessions).
-  const featured = await prisma.coach.findMany({
-    where: bookableCoachWhere(),
-    take: 3,
-    orderBy: { createdAt: "asc" },
-  });
-
+export default function HomePage() {
   return (
     <>
       {/* Hero */}
@@ -63,40 +51,6 @@ export default async function HomePage() {
           </p>
         </div>
       </section>
-
-      {/* Featured coaches — only rendered when there are bookable coaches */}
-      {featured.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                Who you&apos;ll practice with
-              </h2>
-              <p className="mt-1 text-slate-600">
-                Incoming consultants and recent offer holders. Tap a coach to
-                see their open times.
-              </p>
-            </div>
-            <Link
-              href="/sessions"
-              className="hidden text-sm font-medium text-indigo-600 hover:underline sm:inline"
-            >
-              See open times →
-            </Link>
-          </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((coach) => (
-              <CoachCard key={coach.id} coach={coach} />
-            ))}
-          </div>
-          <Link
-            href="/sessions"
-            className="mt-6 inline-block text-sm font-medium text-indigo-600 hover:underline sm:hidden"
-          >
-            See open times →
-          </Link>
-        </section>
-      )}
 
       {/* How it works */}
       <section
@@ -141,44 +95,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Value props */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <div className="grid gap-6 sm:grid-cols-3">
-          <Feature
-            Icon={ShieldCheck}
-            title="People who just did it"
-            body="Practice with incoming consultants and recent offer holders. They went through the same interviews not long ago, so they remember what actually worked."
-          />
-          <Feature
-            Icon={Zap}
-            title="Booked in two clicks"
-            body="Pick a time and you're confirmed. No request forms, no waiting. Your meeting details arrive instantly."
-          />
-          <Feature
-            Icon={Target}
-            title="The right rep, every time"
-            body="See each coach's firm, focus, and what they're best for up front, so every session targets exactly what you need to work on."
-          />
-        </div>
-      </section>
-
-      {/* Why recent offer holders — the core argument, kept plain and honest */}
-      <section className="mx-auto max-w-3xl px-4 pb-14 sm:px-6">
+      {/* Why recent offer holders — bullet argument, right after how-it-works */}
+      <section className="mx-auto max-w-3xl px-4 py-14 sm:px-6">
         <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900">
           Why practice with recent offer holders?
         </h2>
-        <div className="mx-auto mt-6 max-w-2xl space-y-4 text-slate-600">
-          <p>
-            They just did what you are trying to do. They remember the cases,
-            the pressure, and the mistakes that cost people. That makes their
-            feedback practical and fresh.
-          </p>
-          <p>
-            Practicing with friends is cheap, but you are both still learning. A
-            professional coach can cost $200 or more an hour. This is the middle
-            option: affordable reps with someone who recently passed the process.
-          </p>
-        </div>
+        <p className="mx-auto mt-3 max-w-xl text-center text-slate-600">
+          They just went through the process you are preparing for.
+        </p>
+        <ul className="mx-auto mt-8 max-w-2xl space-y-4">
+          <WhyPoint
+            title="Fresher advice:"
+            body="they remember what cases felt like, what mistakes they made, and what helped them improve."
+          />
+          <WhyPoint
+            title="More practical feedback:"
+            body="they can tell you what worked in real interviews, not just theory."
+          />
+          <WhyPoint
+            title="More affordable reps:"
+            body="you can practice more often without paying senior-coach prices."
+          />
+          <WhyPoint
+            title="Better than peer-only practice:"
+            body="friends are helpful, but they are usually still learning too."
+          />
+        </ul>
       </section>
 
       {/* FAQ */}
@@ -283,23 +225,16 @@ function Step({
   );
 }
 
-function Feature({
-  Icon,
-  title,
-  body,
-}: {
-  Icon: typeof Search;
-  title: string;
-  body: string;
-}) {
+function WhyPoint({ title, body }: { title: string; body: string }) {
   return (
-    <div className={`${cardClass} p-6`}>
-      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-        <Icon className="size-5" />
+    <li className="flex gap-3">
+      <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+        <Check className="size-4" />
       </span>
-      <h3 className="mt-4 font-semibold text-slate-900">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{body}</p>
-    </div>
+      <p className="text-slate-700">
+        <span className="font-semibold text-slate-900">{title}</span> {body}
+      </p>
+    </li>
   );
 }
 
