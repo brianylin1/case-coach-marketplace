@@ -1,107 +1,121 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, X, Zap } from "lucide-react";
 import { btnPrimary } from "@/lib/ui";
 
 export const metadata: Metadata = {
   title: "Become a coach · Down to Case",
   description:
-    "You just went through recruiting. Candidates want that insight. Set your times, share your link, and let them book you for affordable mock cases.",
+    "Turn your consulting offer into credible paid coaching without marketing yourself from scratch. Create a profile and let candidates find and book you.",
 };
 
-// Positioning: speak to incoming consultants and recent offer holders. The hook
-// is "you just went through recruiting, and that fresh insight is what
-// candidates want." Helping them is easy, and the link quietly handles the
-// scheduling and payment. CTAs route into the existing /signup/coach flow,
-// which ends at the dashboard's share-your-page link.
+// Positioning: the real pain isn't scheduling, it's self-marketing. Incoming
+// consultants and recent offer holders want to coach, but not to post "hire me"
+// or build a coaching brand next to a new job. So we lead with access and
+// credibility (a profile candidates can find and book); scheduling and payment
+// are secondary. Honest about demand: the candidate side is still growing, so
+// the copy says "find and book you," never "we'll get you students." CTAs route
+// into the existing /signup/coach flow.
+
+// Benefits, ordered: discovery and credibility first, scheduling/payment last.
 const benefits = [
   {
-    title: "Get paid for it.",
-    body: "Set your own rate. Charge what you want, or coach for free.",
+    title: "Get discovered by candidates.",
+    body: "As we grow the candidate side, your profile gives people a clean way to find and book you. No marketing yourself from scratch.",
   },
   {
-    title: "Your experience is what they want.",
-    body: "You just did this. That fresh memory is exactly what candidates need.",
+    title: "Look credible without a coaching brand.",
+    body: "Your firm, offer status, and focus areas do the talking. There is no personal brand to build.",
   },
   {
-    title: "No back-and-forth.",
-    body: "They pick from times you're already free. Nothing to plan.",
+    title: "Turn recruiting into paid sessions.",
+    body: "You just went through it. Put that fresh experience to work in short, paid mock cases.",
   },
   {
-    title: "Just show up.",
-    body: "The time, the invite, even the payment are handled before you reply.",
+    title: "Set your rate and availability.",
+    body: "You choose what you charge and when you are free. Change it anytime.",
+  },
+  {
+    title: "Scheduling and payment handled.",
+    body: "Booking, calendar invites, and payment run on their own, so you just show up.",
   },
 ];
 
-// The transformation, shown not told. Two phone-style threads, both from the
-// coach's point of view: incoming (student) bubbles left + gray, outgoing
-// (coach) bubbles right + indigo. The "old way" is deliberately long and
-// believable; the "easy way" is four messages. Plain data so the markup stays
-// a simple map.
-type ChatMsg = { from: "student" | "coach"; text?: string; link?: boolean };
-
-const oldWay: ChatMsg[] = [
-  { from: "student", text: "Hey! Any chance you could do a mock case with me sometime?" },
-  { from: "coach", text: "Yeah, happy to. What days are you free?" },
-  { from: "student", text: "Pretty open this week after 5!" },
-  { from: "coach", text: "I’m slammed Tue/Wed… Thursday?" },
-  { from: "student", text: "Thursday I have class till 6:30 😩" },
-  { from: "coach", text: "Friday morning then?" },
-  { from: "student", text: "Friday works. 10am?" },
-  { from: "coach", text: "Perfect. I’ll dig up a Zoom link" },
-  { from: "student", text: "Amazing, thank you!! And what do I owe you?" },
-  { from: "coach", text: "Don’t worry about it… $40 if you want, Venmo’s fine" },
-  { from: "student", text: "Sent! Wait — what’s your handle again?" },
+// The shift, shown side by side: marketing yourself vs. a profile candidates
+// find and book. Plain data so the markup stays a simple map.
+const oldWay = [
+  "Posting “DM me for case coaching” feels awkward",
+  "Explaining your background over and over",
+  "Random DMs to answer",
+  "“How much do you charge?”",
+  "“What times work for you?”",
+  "Venmo back-and-forth",
 ];
 
-const easyWay: ChatMsg[] = [
-  { from: "student", text: "Can you help me case?" },
-  { from: "coach", text: "Sure. I’m down to case." },
-  { from: "coach", link: true },
-  { from: "student", text: "Booked." },
+const newWay = [
+  "Candidates find you by firm, offer, and focus",
+  "They book from your open times",
+  "Payment and calendar invite handled",
 ];
 
-function Bubble({
-  from,
-  children,
-}: {
-  from: "student" | "coach";
-  children: ReactNode;
-}) {
-  const isCoach = from === "coach";
+function Friction({ children }: { children: ReactNode }) {
   return (
-    <div className={`flex ${isCoach ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[82%] rounded-2xl px-3.5 py-2 text-sm leading-snug ${
-          isCoach
-            ? "rounded-br-sm bg-indigo-600 text-white"
-            : "rounded-bl-sm bg-slate-200 text-slate-800"
-        }`}
-      >
-        {children}
-      </div>
-    </div>
+    <li className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+        <X className="size-3.5" />
+      </span>
+      <span className="text-sm text-slate-600">{children}</span>
+    </li>
   );
 }
 
-function Thread({ messages }: { messages: ChatMsg[] }) {
+function Win({ children }: { children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      {messages.map((m, i) => (
-        <Bubble key={i} from={m.from}>
-          {m.link ? (
-            <>
-              Book a time here:
-              <span className="mt-1.5 block rounded-lg bg-white/15 px-2.5 py-1.5 font-medium underline decoration-white/40 underline-offset-2">
-                downtocase.com/with/you
-              </span>
-            </>
-          ) : (
-            m.text
-          )}
-        </Bubble>
-      ))}
+    <li className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+        <Check className="size-3.5" />
+      </span>
+      <span className="text-sm text-slate-700">{children}</span>
+    </li>
+  );
+}
+
+// A small, non-cartoonish mock of a coach profile, mirroring the real card look
+// so the "new way" feels concrete (sample data, not a real coach).
+function ProfileMock() {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">
+          AR
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">Alex R.</p>
+          <p className="text-xs text-slate-500">Incoming McKinsey Associate</p>
+        </div>
+        <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+          McKinsey
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {["Structuring", "Market sizing", "Behavioral"].map((t) => (
+          <span
+            key={t}
+            className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+          >
+            {t}
+          </span>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+        <span className="text-sm font-semibold text-slate-900">
+          $60<span className="font-normal text-slate-400">/hr</span>
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white">
+          <Zap className="size-3.5" /> Book
+        </span>
+      </div>
     </div>
   );
 }
@@ -116,17 +130,20 @@ export default function ForCoachesPage() {
         </div>
         <div className="mx-auto max-w-3xl px-4 pb-12 pt-16 text-center sm:px-6 sm:pt-24">
           <p className="text-base font-medium text-indigo-600">
-            You just went through recruiting.
+            You just got the offer.
           </p>
           <h1 className="text-balance mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-            You got the offer. Candidates want to know how you did it.
+            We help candidates find you.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-slate-600">
-            Help them with what you just learned, and get paid for it.
+            Candidates want advice from people who just went through recruiting.
+            A simple profile gives them a clean way to find and book you, so you
+            can coach without marketing yourself, chasing DMs, or collecting
+            payment.
           </p>
           <div className="mt-8 flex flex-col items-center gap-2">
             <Link href="/signup/coach" className={`${btnPrimary} px-5 py-3 text-base`}>
-              Get your link
+              Create your profile
               <ArrowRight className="size-5" />
             </Link>
             <span className="text-sm text-slate-500">Free to set up.</span>
@@ -137,45 +154,54 @@ export default function ForCoachesPage() {
         </div>
       </section>
 
-      {/* The transformation, shown not told */}
+      {/* The shift: marketing yourself vs. a profile candidates find and book */}
       <section className="border-y border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
           <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Same favor. A lot less hassle.
+            Coach without marketing yourself.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-center text-slate-600">
-            The coaching is exactly the same. Everything around it isn&apos;t.
+            The coaching is the easy part. Putting yourself out there is the part
+            most people would rather skip.
           </p>
-          <div className="mt-10 grid gap-6 sm:grid-cols-2">
-            {/* The old way */}
+          <div className="mt-10 grid items-start gap-6 sm:grid-cols-2">
+            {/* Doing it yourself */}
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
-              <p className="mb-5 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
-                The old way
+              <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Doing it yourself
               </p>
-              <Thread messages={oldWay} />
-              <p className="mt-5 text-center text-sm font-medium text-slate-500">
-                …and you haven&apos;t even booked a room yet.
-              </p>
+              <div className="rounded-xl border border-slate-200 bg-white p-3 text-sm italic text-slate-500">
+                &ldquo;Hey everyone, I just finished consulting recruiting and
+                I&apos;m doing case coaching on the side. DM me if
+                you&apos;re interested.&rdquo;
+              </div>
+              <ul className="mt-4 space-y-2.5">
+                {oldWay.map((t) => (
+                  <Friction key={t}>{t}</Friction>
+                ))}
+              </ul>
             </div>
-            {/* The easy way */}
+            {/* On Down to Case */}
             <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 sm:p-6">
-              <p className="mb-5 text-center text-xs font-semibold uppercase tracking-wider text-indigo-600">
-                The easy way
+              <p className="mb-4 text-center text-xs font-semibold uppercase tracking-wider text-indigo-600">
+                On Down to Case
               </p>
-              <Thread messages={easyWay} />
-              <p className="mt-5 text-center text-sm font-semibold text-slate-900">
-                Done.
-              </p>
+              <ProfileMock />
+              <ul className="mt-4 space-y-2.5">
+                {newWay.map((t) => (
+                  <Win key={t}>{t}</Win>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Why it beats doing it yourself */}
+      {/* Benefits */}
       <section className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6">
           <h2 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            Why that beats doing it yourself
+            Why coach on Down to Case
           </h2>
           <ul className="mt-8 space-y-5">
             {benefits.map((b) => (
@@ -197,11 +223,15 @@ export default function ForCoachesPage() {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 px-6 py-12 text-center shadow-lg sm:px-12">
           <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Easy to try. Easy to stop.
+            Get your profile ready.
           </h2>
+          <p className="mx-auto mt-3 max-w-xl text-indigo-100">
+            Set up your profile now and be part of the early coach group, so
+            you are ready as the candidate side grows.
+          </p>
           <ul className="mx-auto mt-5 flex max-w-md flex-col gap-2 text-indigo-100">
             <li>Free to set up.</li>
-            <li>Your price. Your hours. Your rules.</li>
+            <li>Your rate. Your hours. Your rules.</li>
             <li>Stop anytime.</li>
           </ul>
           <div className="mt-8">
@@ -209,7 +239,7 @@ export default function ForCoachesPage() {
               href="/signup/coach"
               className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-base font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
             >
-              Get your link
+              Create your profile
               <ArrowRight className="size-5" />
             </Link>
           </div>
